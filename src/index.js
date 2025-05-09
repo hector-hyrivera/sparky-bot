@@ -15,6 +15,89 @@ const client = new Client({
     ]
 });
 
+// Cache for Pokedex data
+let pokedexCache = null;
+
+// Fetch full Pokedex data
+async function getPokedex() {
+    if (pokedexCache) return pokedexCache;
+    
+    try {
+        const response = await fetch('https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json');
+        if (!response.ok) {
+            throw new Error('Failed to fetch Pokedex data');
+        }
+        pokedexCache = await response.json();
+        return pokedexCache;
+    } catch (error) {
+        console.error('Error fetching Pokedex:', error);
+        return null;
+    }
+}
+
+// Find Pokemon by name (including forms)
+async function findPokemon(name) {
+    const pokedex = await getPokedex();
+    if (!pokedex) return null;
+
+    const searchName = name.toLowerCase();
+    console.log(`Searching for Pokemon: ${searchName}`);
+    
+    // First try exact match
+    let pokemon = pokedex.find(p => {
+        const baseName = p.names.English.toLowerCase();
+        const formName = p.formId ? p.formId.toLowerCase() : '';
+        return baseName === searchName || formName === searchName;
+    });
+
+    // If no exact match, try partial match
+    if (!pokemon) {
+        pokemon = pokedex.find(p => {
+            const baseName = p.names.English.toLowerCase();
+            const formName = p.formId ? p.formId.toLowerCase() : '';
+            return baseName.includes(searchName) || formName.includes(searchName);
+        });
+    }
+
+    // If still no match, try searching in regional forms
+    if (!pokemon) {
+        console.log('Searching for regional forms...');
+        // First, try to find the base Pokemon
+        const baseName = searchName.replace(/^(alolan|galarian|hisuian|paldean)\s+/i, '');
+        console.log(`Looking for base Pokemon: ${baseName}`);
+        
+        const basePokemon = pokedex.find(p => 
+            p.names.English.toLowerCase() === baseName
+        );
+
+        if (basePokemon) {
+            console.log(`Found base Pokemon: ${basePokemon.names.English}`);
+            // Check if this Pokemon has the requested regional form
+            const formPrefix = searchName.match(/^(alolan|galarian|hisuian|paldean)/i)?.[1].toLowerCase();
+            if (formPrefix && basePokemon.regionForms) {
+                console.log(`Looking for ${formPrefix} form in regionForms:`, basePokemon.regionForms);
+                // Find the regional form in the base Pokemon's regionForms
+                const regionalFormId = Object.keys(basePokemon.regionForms).find(id => 
+                    id.toLowerCase().includes(formPrefix)
+                );
+                
+                if (regionalFormId) {
+                    console.log(`Found regional form ID: ${regionalFormId}`);
+                    // Use the regional form data directly from regionForms
+                    const regionalForm = basePokemon.regionForms[regionalFormId];
+                    if (regionalForm) {
+                        console.log(`Found regional form: ${regionalForm.names.English}`);
+                        return regionalForm;
+                    }
+                }
+                console.log(`No ${formPrefix} form found for ${basePokemon.names.English}`);
+            }
+        }
+    }
+
+    return pokemon;
+}
+
 // Command definitions
 const commands = [
     new SlashCommandBuilder()
@@ -26,7 +109,14 @@ const commands = [
                 .setRequired(true)),
     new SlashCommandBuilder()
         .setName('currentraids')
-        .setDescription('List all current raid bosses')
+        .setDescription('List all current raid bosses'),
+    new SlashCommandBuilder()
+        .setName('pokemon')
+        .setDescription('Get information about a Pokemon')
+        .addStringOption(option =>
+            option.setName('name')
+                .setDescription('The name of the Pokemon')
+                .setRequired(true))
 ].map(command => command.toJSON());
 
 // Register commands
@@ -61,6 +151,105 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
     const { commandName } = interaction;
+
+    if (commandName === 'pokemon') {
+        const pokemonName = interaction.options.getString('name').toLowerCase();
+        const pokemon = await findPokemon(pokemonName);
+        
+        if (!pokemon) {
+            await interaction.reply(`Sorry, I couldn't find information for ${pokemonName}.`);
+            return;
+        }
+
+        let response = `**${pokemon.names.English}**\n`;
+        
+        // Form information
+        if (pokemon.formId && pokemon.formId !== pokemon.id) {
+            response += `Form: ${pokemon.formId.replace(/_/g, ' ')}\n`;
+        }
+        
+        // Types
+        const types = [pokemon.primaryType.names.English];
+        if (pokemon.secondaryType) {
+            types.push(pokemon.secondaryType.names.English);
+        }
+        response += `Type: ${types.join(', ')}\n`;
+        
+        // Stats
+        response += `Stamina: ${pokemon.stats.stamina}\n`;
+        response += `Attack: ${pokemon.stats.attack}\n`;
+        response += `Defense: ${pokemon.stats.defense}\n`;
+        
+        // Quick Moves
+        if (pokemon.quickMoves) {
+            response += '\n**Fast Attacks:**\n';
+            Object.values(pokemon.quickMoves).forEach(move => {
+                response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
+            });
+        }
+        
+        // Cinematic Moves
+        if (pokemon.cinematicMoves) {
+            response += '\n**Special Attacks:**\n';
+            Object.values(pokemon.cinematicMoves).forEach(move => {
+                response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
+            });
+        }
+
+        // Elite Moves
+        if (pokemon.eliteCinematicMoves && Object.keys(pokemon.eliteCinematicMoves).length > 0) {
+            response += '\n**Elite Special Attacks:**\n';
+            Object.values(pokemon.eliteCinematicMoves).forEach(move => {
+                response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
+            });
+        }
+
+        // Regional Forms
+        if (pokemon.regionForms && pokemon.regionForms.length > 0) {
+            response += '\n**Regional Forms:**\n';
+            pokemon.regionForms.forEach(form => {
+                response += `• ${form.names.English}`;
+                if (form.primaryType) {
+                    const formTypes = [form.primaryType.names.English];
+                    if (form.secondaryType) {
+                        formTypes.push(form.secondaryType.names.English);
+                    }
+                    response += ` (${formTypes.join(', ')})`;
+                }
+                response += '\n';
+            });
+        }
+
+        // Evolution
+        if (pokemon.evolutions && pokemon.evolutions.length > 0) {
+            response += '\n**Evolves To:**\n';
+            pokemon.evolutions.forEach(evo => {
+                response += `• ${evo.id.replace(/_/g, ' ')}`;
+                if (evo.candies) {
+                    response += ` (${evo.candies} candies)`;
+                }
+                response += '\n';
+            });
+        }
+
+        // Mega Evolution
+        if (pokemon.hasMegaEvolution) {
+            response += '\n**Mega Evolution Available**\n';
+            if (pokemon.megaEvolutions) {
+                Object.values(pokemon.megaEvolutions).forEach(mega => {
+                    response += `• ${mega.names.English}\n`;
+                    response += `  Attack: ${mega.stats.attack}\n`;
+                    response += `  Defense: ${mega.stats.defense}\n`;
+                    response += `  Stamina: ${mega.stats.stamina}\n`;
+                });
+            }
+        }
+
+        await interaction.reply({
+            content: response,
+            ephemeral: true
+        });
+    }
 
     if (commandName === 'hundo') {
         const pokemonName = interaction.options.getString('pokemon').toLowerCase();
