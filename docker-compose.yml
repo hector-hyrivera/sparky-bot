@@ -1,6 +1,8 @@
+version: '3.8'
+
 services:
   bot:
-    build: .
+    image: ghcr.io/hector-hyrivera/sparky-bot:latest
     env_file:
       - .env
     environment:
