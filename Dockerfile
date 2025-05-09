@@ -5,6 +5,10 @@ ARG DISCORD_TOKEN
 ARG CLIENT_ID
 ARG GUILD_ID
 
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodeuser
+
 WORKDIR /app
 
 # Create .env file from build arguments
@@ -20,6 +24,12 @@ RUN npm install
 
 # Copy source code
 COPY . .
+
+# Set ownership to non-root user
+RUN chown -R nodeuser:nodejs /app
+
+# Switch to non-root user
+USER nodeuser
 
 # Start the bot
 CMD ["node", "src/index.js"] 
