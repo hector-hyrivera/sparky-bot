@@ -245,8 +245,18 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
+        // Create embed with Pokemon image
+        const embed = {
+            title: pokemon.names.English,
+            description: response,
+            color: 0x00ff00, // Green color
+            image: {
+                url: pokemon.assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+            }
+        };
+
         await interaction.reply({
-            content: response,
+            embeds: [embed],
             ephemeral: true
         });
     }
@@ -294,45 +304,82 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        let response = '**Current Raid Bosses:**\n\n';
+        // Create embeds for each raid tier
+        const embeds = [];
 
         // Mega Raids
         if (raidData.currentList.mega?.length > 0) {
-            response += '**Mega Raids:**\n';
-            raidData.currentList.mega.forEach(pokemon => {
-                response += `• ${pokemon.names.English}\n`;
-            });
-            response += '\n';
+            const megaEmbed = {
+                title: 'Mega Raids',
+                color: 0xFF0000, // Red
+                fields: raidData.currentList.mega.map(pokemon => ({
+                    name: pokemon.names.English,
+                    value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
+                    inline: true
+                })),
+                thumbnail: {
+                    url: raidData.currentList.mega[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                }
+            };
+            embeds.push(megaEmbed);
         }
 
         // Level 5 Raids
         if (raidData.currentList.lvl5?.length > 0) {
-            response += '**Level 5 Raids:**\n';
-            raidData.currentList.lvl5.forEach(pokemon => {
-                response += `• ${pokemon.names.English}\n`;
-            });
-            response += '\n';
+            const lvl5Embed = {
+                title: 'Level 5 Raids',
+                color: 0xFFA500, // Orange
+                fields: raidData.currentList.lvl5.map(pokemon => ({
+                    name: pokemon.names.English,
+                    value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
+                    inline: true
+                })),
+                thumbnail: {
+                    url: raidData.currentList.lvl5[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                }
+            };
+            embeds.push(lvl5Embed);
         }
 
         // Level 3 Raids
         if (raidData.currentList.lvl3?.length > 0) {
-            response += '**Level 3 Raids:**\n';
-            raidData.currentList.lvl3.forEach(pokemon => {
-                response += `• ${pokemon.names.English}\n`;
-            });
-            response += '\n';
+            const lvl3Embed = {
+                title: 'Level 3 Raids',
+                color: 0x0000FF, // Blue
+                fields: raidData.currentList.lvl3.map(pokemon => ({
+                    name: pokemon.names.English,
+                    value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
+                    inline: true
+                })),
+                thumbnail: {
+                    url: raidData.currentList.lvl3[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                }
+            };
+            embeds.push(lvl3Embed);
         }
 
         // Level 1 Raids
         if (raidData.currentList.lvl1?.length > 0) {
-            response += '**Level 1 Raids:**\n';
-            raidData.currentList.lvl1.forEach(pokemon => {
-                response += `• ${pokemon.names.English}\n`;
-            });
-            response += '\n';
+            const lvl1Embed = {
+                title: 'Level 1 Raids',
+                color: 0x00FF00, // Green
+                fields: raidData.currentList.lvl1.map(pokemon => ({
+                    name: pokemon.names.English,
+                    value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
+                    inline: true
+                })),
+                thumbnail: {
+                    url: raidData.currentList.lvl1[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                }
+            };
+            embeds.push(lvl1Embed);
         }
 
-        await interaction.reply(response);
+        // Send all embeds
+        await interaction.reply({
+            embeds: embeds,
+            ephemeral: true
+        });
     }
 });
 
