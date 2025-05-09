@@ -55,5 +55,3 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }} 
-          build-args: |
-            {"DISCORD_TOKEN": "${{ secrets.DISCORD_TOKEN }}", "CLIENT_ID": "${{ secrets.CLIENT_ID }}", "GUILD_ID": "${{ secrets.GUILD_ID }}"} 
