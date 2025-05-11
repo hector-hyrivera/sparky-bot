@@ -292,8 +292,31 @@ client.on('interactionCreate', async interaction => {
         const perfectCP = pokemon.cpRange[1];
         const perfectCPBoosted = pokemon.cpRangeBoost[1];
 
+        const embed = {
+            title: `Perfect IV CP for ${pokemon.names.English}`,
+            color: 0x00ff00, // Green color
+            fields: [
+                {
+                    name: 'Normal CP',
+                    value: perfectCP.toString(),
+                    inline: true
+                },
+                {
+                    name: 'Weather Boosted CP',
+                    value: perfectCPBoosted.toString(),
+                    inline: true
+                }
+            ],
+            image: {
+                url: pokemon.assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+            },
+            footer: {
+                text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
+            }
+        };
+
         await interaction.reply({
-            content: `**${pokemon.names.English}**\nPerfect IV CP: ${perfectCP}\nPerfect IV CP (Weather Boosted): ${perfectCPBoosted}`
+            embeds: [embed]
         });
     }
 
