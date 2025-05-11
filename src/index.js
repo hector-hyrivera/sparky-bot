@@ -252,12 +252,14 @@ client.on('interactionCreate', async interaction => {
             color: 0x00ff00, // Green color
             image: {
                 url: pokemon.assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+            },
+            footer: {
+                text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
             }
         };
 
         await interaction.reply({
-            embeds: [embed],
-            ephemeral: true
+            embeds: [embed]
         });
     }
 
@@ -291,8 +293,7 @@ client.on('interactionCreate', async interaction => {
         const perfectCPBoosted = pokemon.cpRangeBoost[1];
 
         await interaction.reply({
-            content: `**${pokemon.names.English}**\nPerfect IV CP: ${perfectCP}\nPerfect IV CP (Weather Boosted): ${perfectCPBoosted}`,
-            ephemeral: true
+            content: `**${pokemon.names.English}**\nPerfect IV CP: ${perfectCP}\nPerfect IV CP (Weather Boosted): ${perfectCPBoosted}`
         });
     }
 
@@ -319,6 +320,9 @@ client.on('interactionCreate', async interaction => {
                 })),
                 thumbnail: {
                     url: raidData.currentList.mega[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                },
+                footer: {
+                    text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
                 }
             };
             embeds.push(megaEmbed);
@@ -336,6 +340,9 @@ client.on('interactionCreate', async interaction => {
                 })),
                 thumbnail: {
                     url: raidData.currentList.lvl5[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                },
+                footer: {
+                    text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
                 }
             };
             embeds.push(lvl5Embed);
@@ -353,6 +360,9 @@ client.on('interactionCreate', async interaction => {
                 })),
                 thumbnail: {
                     url: raidData.currentList.lvl3[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                },
+                footer: {
+                    text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
                 }
             };
             embeds.push(lvl3Embed);
@@ -370,6 +380,9 @@ client.on('interactionCreate', async interaction => {
                 })),
                 thumbnail: {
                     url: raidData.currentList.lvl1[0].assets?.image || 'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png'
+                },
+                footer: {
+                    text: 'Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)'
                 }
             };
             embeds.push(lvl1Embed);
@@ -377,8 +390,7 @@ client.on('interactionCreate', async interaction => {
 
         // Send all embeds
         await interaction.reply({
-            embeds: embeds,
-            ephemeral: true
+            embeds: embeds
         });
     }
 });
