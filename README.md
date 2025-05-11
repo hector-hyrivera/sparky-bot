@@ -1,50 +1,66 @@
-# Sparky Bot - Pokemon GO Raid Assistant
+# Sparky Bot
 
-A Discord bot that provides information about current Pokemon GO raid bosses and their perfect IV CP values.
+A Discord bot that provides Pokemon GO related information and utilities.
 
 ## Features
 
-- `/hundo <pokemon>` - Get the perfect IV CP for a specific raid boss
-- `/currentraids` - List all current raid bosses by tier
+- `/pokemon` - Get detailed information about any Pokemon
+- `/hundo` - Get perfect IV CP values for current raid bosses
+- `/currentraids` - List all current raid bosses and their perfect IV CP values
 
-## Setup
+## Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root directory with the following content:
-   ```
-   DISCORD_TOKEN=your_discord_bot_token_here
-   CLIENT_ID=your_application_client_id_here
-   ```
-4. Start the bot:
-   ```bash
-   npm start
-   ```
+1. Invite the bot to your server using custom link. (Limited Users)
+2. Ensure the bot has the necessary permissions
+3. Start using the commands!
 
-## Getting Your Discord Bot Token
+## Commands
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application
-3. Go to the "Bot" section and create a bot
-4. Copy the bot token and add it to your `.env` file
-5. Go to the "OAuth2" section and copy your application's Client ID
-6. Add the Client ID to your `.env` file
+### `/pokemon [name]`
+Get detailed information about a Pokemon, including:
+- Base stats
+- Types
+- Moves
+- Evolution information
+- Regional forms
+- Mega evolution details
 
-## Inviting the Bot to Your Server
+### `/hundo [pokemon]`
+Get the perfect IV CP values for a raid boss:
+- Normal CP
+- Weather boosted CP
 
-1. Go to the OAuth2 section in the Discord Developer Portal
-2. Under "Scopes", select "bot" and "applications.commands"
-3. Under "Bot Permissions", select:
-   - Send Messages
-   - Use Slash Commands
-4. Copy the generated URL and open it in your browser to invite the bot to your server
+### `/currentraids`
+View all current raid bosses:
+- Mega raids
+- Level 5 raids
+- Level 3 raids
+- Level 1 raids
 
-## Usage
+## Data Sources
 
-- Use `/hundo <pokemon>` to get the perfect IV CP for a specific raid boss
-  Example: `/hundo Tapu Fini`
-  
-- Use `/currentraids` to see a list of all current raid bosses organized by tier 
+This bot uses the following APIs:
+- [Pokemon GO API](https://github.com/pokemon-go-api/pokemon-go-api) for Pokemon and raid data
+- Discord API for bot functionality
+
+## Legal Documents
+
+- [Terms of Service](TERMS.md)
+- [Privacy Policy](PRIVACY.md)
+- [MIT License](LICENSE)
+
+## Support
+
+For support, please:
+- Email us at developer@hyrivera.com
+- Open an issue on GitHub
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Pokemon GO API](https://github.com/pokemon-go-api/pokemon-go-api) for providing the Pokemon data
+- Discord.js team for the amazing Discord API wrapper
+- All contributors and users of the bot 
