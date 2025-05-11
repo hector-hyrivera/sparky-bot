@@ -106,7 +106,8 @@ const commands = [
         .addStringOption(option =>
             option.setName('pokemon')
                 .setDescription('The name of the Pokemon')
-                .setRequired(true)),
+                .setRequired(true)
+                .setAutocomplete(true)),
     new SlashCommandBuilder()
         .setName('currentraids')
         .setDescription('List all current raid bosses'),
@@ -148,9 +149,37 @@ async function getRaidBosses() {
 
 // Handle commands
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isCommand()) return;
+    if (!interaction.isCommand() && !interaction.isAutocomplete()) return;
 
     const { commandName } = interaction;
+
+    // Handle autocomplete for hundo command
+    if (interaction.isAutocomplete() && commandName === 'hundo') {
+        const raidData = await getRaidBosses();
+        if (!raidData) {
+            await interaction.respond([]);
+            return;
+        }
+
+        const focusedValue = interaction.options.getFocused().toLowerCase();
+        const allRaids = [
+            ...(raidData.currentList.mega || []),
+            ...(raidData.currentList.lvl5 || []),
+            ...(raidData.currentList.lvl3 || []),
+            ...(raidData.currentList.lvl1 || [])
+        ];
+
+        const filtered = allRaids
+            .filter(pokemon => pokemon.names.English.toLowerCase().includes(focusedValue))
+            .slice(0, 25)
+            .map(pokemon => ({
+                name: pokemon.names.English,
+                value: pokemon.names.English
+            }));
+
+        await interaction.respond(filtered);
+        return;
+    }
 
     if (commandName === 'pokemon') {
         const pokemonName = interaction.options.getString('name').toLowerCase();
