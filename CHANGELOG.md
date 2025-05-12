@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-05-13]
+
+### Added
+- Autocomplete functionality for the `/pokemon` command
+- Support for variants (regional forms, mega evolutions, primal forms) in autocomplete
+
+### Enhanced 
+- Added deferred replies to prevent timeout errors on long API calls
+- Significantly improved search functionality for special forms like Primal and Mega evolutions
+- Better handling of complex Pokemon form names in search results
+- Default popular Pokemon suggestions when no search term is entered
+
+### Fixed
+- Resolved "Unknown interaction" errors by implementing deferred replies
+- Fixed issue with special forms not returning correct stats and images
+- Improved matching logic for variants to ensure proper data retrieval
+
 ## [2025-05-12]
 
 ### Refactored
