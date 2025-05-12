@@ -83,11 +83,12 @@ async function findPokemon(name) {
 
     if (basePokemon) {
       console.log(`Found base Pokemon: ${basePokemon.names.English}`);
-      // Check if this Pokemon has the requested regional form
+      // Check for regional forms
       const formPrefix = searchName
         .match(/^(alolan|galarian|hisuian|paldean)/i)?.[1]
-        .toLowerCase();
-      const megaFormPrefix = searchName.match(/^mega/i)?.[1].toLowerCase();
+        ?.toLowerCase();
+      const megaFormPrefix = searchName.match(/^mega/i)?.[1]?.toLowerCase();
+
       if (formPrefix && basePokemon.regionForms) {
         console.log(
           `Looking for ${formPrefix} form in regionForms:`,
@@ -110,32 +111,33 @@ async function findPokemon(name) {
         console.log(
           `No ${formPrefix} form found for ${basePokemon.names.English}`
         );
-      } else {
-        if (megaFormPrefix && basePokemon.megaEvolutions) {
-          console.log(
-            `Looking for ${megaFormPrefix} form in megaEvolutions:`,
-            basePokemon.megaEvolutions
-          );
-          // Find the mega evolution in the base Pokemon's megaEvolutions
-          const megaEvolutionId = Object.keys(basePokemon.megaEvolutions).find(
-            (id) => id.toLowerCase().includes(megaFormPrefix)
-          );
+      }
 
-          if (megaEvolutionId) {
-            console.log(`Found mega evolution ID: ${megaEvolutionId}`);
-            // Use the mega evolution data directly from megaEvolutions
-            const megaEvolution = basePokemon.megaEvolutions[megaEvolutionId];
-            if (megaEvolution) {
-              console.log(
-                `Found mega evolution: ${megaEvolution.names.English}`
-              );
-              return megaEvolution;
-            }
+      // Check for mega evolutions
+      if (megaFormPrefix && basePokemon.megaEvolutions) {
+        console.log(
+          `Looking for ${megaFormPrefix} form in megaEvolutions:`,
+          basePokemon.megaEvolutions
+        );
+        // Find the mega evolution in the base Pokemon's megaEvolutions
+        const megaEvolutionId = Object.keys(basePokemon.megaEvolutions).find(
+          (id) => id.toLowerCase().includes(megaFormPrefix)
+        );
+
+        if (megaEvolutionId) {
+          console.log(`Found mega evolution ID: ${megaEvolutionId}`);
+          // Use the mega evolution data directly from megaEvolutions
+          const megaEvolution = basePokemon.megaEvolutions[megaEvolutionId];
+          if (megaEvolution) {
+            console.log(
+              `Found mega evolution: ${megaEvolution.names.English}`
+            );
+            return megaEvolution;
           }
-          console.log(
-            `No ${megaFormPrefix} form found for ${basePokemon.names.English}`
-          );
         }
+        console.log(
+          `No ${megaFormPrefix} form found for ${basePokemon.names.English}`
+        );
       }
     }
   }
@@ -429,6 +431,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Mega Raids
     if (raidData.currentList.mega?.length > 0) {
+      // Create main embed for Mega Raids
       const megaEmbed = {
         title: "Mega Raids",
         color: 0xff0000, // Red
@@ -437,18 +440,29 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        image: {
-          url: raidData.currentList.mega.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
-        },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
         },
       };
       embeds.push(megaEmbed);
+
+      // Create additional embeds for Mega Raid images
+      raidData.currentList.mega.forEach((pokemon, index) => {
+        if (index % 4 === 0) { // Create new embed every 4 Pokemon
+          const imageEmbed = {
+            color: 0xff0000,
+            image: {
+              url: pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+            },
+          };
+          embeds.push(imageEmbed);
+        }
+      });
     }
 
     // Level 5 Raids
     if (raidData.currentList.lvl5?.length > 0) {
+      // Create main embed for Level 5 Raids
       const lvl5Embed = {
         title: "Level 5 Raids",
         color: 0xffa500, // Orange
@@ -457,18 +471,29 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        image: {
-          url: raidData.currentList.lvl5.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
-        },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
         },
       };
       embeds.push(lvl5Embed);
+
+      // Create additional embeds for Level 5 Raid images
+      raidData.currentList.lvl5.forEach((pokemon, index) => {
+        if (index % 4 === 0) { // Create new embed every 4 Pokemon
+          const imageEmbed = {
+            color: 0xffa500,
+            image: {
+              url: pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+            },
+          };
+          embeds.push(imageEmbed);
+        }
+      });
     }
 
     // Level 3 Raids
     if (raidData.currentList.lvl3?.length > 0) {
+      // Create main embed for Level 3 Raids
       const lvl3Embed = {
         title: "Level 3 Raids",
         color: 0x0000ff, // Blue
@@ -477,18 +502,29 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        image: {
-          url: raidData.currentList.lvl3.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
-        },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
         },
       };
       embeds.push(lvl3Embed);
+
+      // Create additional embeds for Level 3 Raid images
+      raidData.currentList.lvl3.forEach((pokemon, index) => {
+        if (index % 4 === 0) { // Create new embed every 4 Pokemon
+          const imageEmbed = {
+            color: 0x0000ff,
+            image: {
+              url: pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+            },
+          };
+          embeds.push(imageEmbed);
+        }
+      });
     }
 
     // Level 1 Raids
     if (raidData.currentList.lvl1?.length > 0) {
+      // Create main embed for Level 1 Raids
       const lvl1Embed = {
         title: "Level 1 Raids",
         color: 0x00ff00, // Green
@@ -497,14 +533,24 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        image: {
-          url: raidData.currentList.lvl1.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
-        },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
         },
       };
       embeds.push(lvl1Embed);
+
+      // Create additional embeds for Level 1 Raid images
+      raidData.currentList.lvl1.forEach((pokemon, index) => {
+        if (index % 4 === 0) { // Create new embed every 4 Pokemon
+          const imageEmbed = {
+            color: 0x00ff00,
+            image: {
+              url: pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+            },
+          };
+          embeds.push(imageEmbed);
+        }
+      });
     }
 
     // Send all embeds
