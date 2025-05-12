@@ -72,7 +72,7 @@ async function findPokemon(name) {
     console.log("Searching for regional forms...");
     // First, try to find the base Pokemon
     const baseName = searchName.replace(
-      /^(alolan|galarian|hisuian|paldean)\s+/i,
+      /^(alolan|galarian|hisuian|paldean|mega)\s+/i,
       ""
     );
     console.log(`Looking for base Pokemon: ${baseName}`);
@@ -85,9 +85,9 @@ async function findPokemon(name) {
       console.log(`Found base Pokemon: ${basePokemon.names.English}`);
       // Check for regional forms
       const formPrefix = searchName
-        .match(/^(alolan|galarian|hisuian|paldean)/i)?.[1]
+        .match(/^(alolan|galarian|hisuian|paldean)/i)?.[0]
         ?.toLowerCase();
-      const megaFormPrefix = searchName.match(/^mega/i)?.[1]?.toLowerCase();
+      const megaFormPrefix = searchName.match(/^mega/i)?.[0]?.toLowerCase();
 
       if (formPrefix && basePokemon.regionForms) {
         console.log(
