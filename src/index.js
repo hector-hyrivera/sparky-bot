@@ -87,7 +87,7 @@ async function findPokemon(name) {
       const formPrefix = searchName
         .match(/^(alolan|galarian|hisuian|paldean)/i)?.[1]
         .toLowerCase();
-      const megaFormPrefix = searchName.match(/^+mega/i)?.[1].toLowerCase();
+      const megaFormPrefix = searchName.match(/^mega/i)?.[1].toLowerCase();
       if (formPrefix && basePokemon.regionForms) {
         console.log(
           `Looking for ${formPrefix} form in regionForms:`,
