@@ -355,6 +355,7 @@ const commands = [
         .setName("name")
         .setDescription("The name of the Pokemon")
         .setRequired(true)
+        .setAutocomplete(true)
     ),
 ].map((command) => command.toJSON());
 
@@ -422,12 +423,92 @@ client.on("interactionCreate", async (interaction) => {
     return;
   }
 
+  // Handle autocomplete for pokemon command
+  if (interaction.isAutocomplete() && commandName === "pokemon") {
+    const pokedex = await getPokedex();
+    if (!pokedex) {
+      await interaction.respond([]);
+      return;
+    }
+
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    
+    // Don't filter if the user hasn't typed anything yet
+    if (!focusedValue) {
+      // Just return some popular Pokemon as defaults
+      const popularPokemon = [
+        "Pikachu", "Charizard", "Mewtwo", "Eevee", "Dragonite", 
+        "Tyranitar", "Rayquaza", "Garchomp", "Lucario", "Greninja"
+      ].map(name => ({ name, value: name }));
+      
+      await interaction.respond(popularPokemon);
+      return;
+    }
+    
+    // Create a list to hold all variants
+    const allVariants = [];
+    
+    // Process all Pokemon and their variants
+    pokedex.forEach(pokemon => {
+      // Add base Pokemon
+      if (pokemon.names.English.toLowerCase().includes(focusedValue)) {
+        allVariants.push({
+          name: pokemon.names.English,
+          value: pokemon.names.English
+        });
+      }
+      
+      // Add mega evolutions if they exist
+      if (pokemon.megaEvolutions) {
+        Object.values(pokemon.megaEvolutions).forEach(mega => {
+          if (mega.names.English.toLowerCase().includes(focusedValue)) {
+            allVariants.push({
+              name: mega.names.English,
+              value: mega.names.English
+            });
+          }
+        });
+      }
+      
+      // Add regional forms if they exist
+      if (pokemon.regionForms) {
+        Object.entries(pokemon.regionForms).forEach(([formId, form]) => {
+          // Some implementations may have regionForms as an array, check that form has names
+          if (form && form.names && form.names.English) {
+            if (form.names.English.toLowerCase().includes(focusedValue)) {
+              allVariants.push({
+                name: form.names.English,
+                value: form.names.English
+              });
+            }
+          } else {
+            // Handle case where form ID is used instead of full name
+            const formName = formId.replace(/_/g, " ");
+            if (formName.toLowerCase().includes(focusedValue)) {
+              allVariants.push({
+                name: formName,
+                value: formName
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    // Slice to first 25 results and respond
+    await interaction.respond(allVariants.slice(0, 25));
+    return;
+  }
+
   if (commandName === "pokemon") {
+    // Defer the reply immediately
+    await interaction.deferReply();
+    
     const pokemonName = interaction.options.getString("name").toLowerCase();
     const pokemon = await findPokemon(pokemonName);
 
     if (!pokemon) {
-      await interaction.reply(
+      await interaction.editReply(
         `Sorry, I couldn't find information for ${pokemonName}.`
       );
       return;
@@ -535,7 +616,7 @@ client.on("interactionCreate", async (interaction) => {
       },
     };
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [embed],
     });
   }
