@@ -69,75 +69,113 @@ async function findPokemon(name) {
 
   // If still no match, try searching in regional forms
   if (!pokemon) {
-    console.log("Searching for regional forms...");
-    // First, try to find the base Pokemon
-    const baseName = searchName.replace(
-      /^(alolan|alola|galarian|hisuian|paldean|mega)\s+/i,
-      ""
-    );
-    console.log(`Looking for base Pokemon: ${baseName}`);
-
-    const basePokemon = pokedex.find(
-      (p) => p.names.English.toLowerCase() === baseName
-    );
-
-    if (basePokemon) {
-      console.log(`Found base Pokemon: ${basePokemon.names.English}`);
-      // Check for regional forms
-      const formPrefix = searchName
-        .match(/^(alolan|alola|galarian|hisuian|paldean)/i)?.[0]
-        ?.toLowerCase();
-      const megaFormPrefix = searchName.match(/^mega/i)?.[0]?.toLowerCase();
-
-      if (formPrefix && basePokemon.regionForms) {
-        console.log(
-          `Looking for ${formPrefix} form in regionForms:`,
-          basePokemon.regionForms
-        );
-        // Find the regional form in the base Pokemon's regionForms
-        const regionalFormId = Object.keys(basePokemon.regionForms).find((id) =>
-          id.toLowerCase().includes(formPrefix)
-        );
-
-        if (regionalFormId) {
-          console.log(`Found regional form ID: ${regionalFormId}`);
-          // Use the regional form data directly from regionForms
-          const regionalForm = basePokemon.regionForms[regionalFormId];
-          if (regionalForm) {
-            console.log(`Found regional form: ${regionalForm.names.English}`);
-            return regionalForm;
+    console.log("Searching for regional forms or special forms...");
+    
+    // Check for forms where form name comes first: "<form> <pokemon>"
+    // Examples: "Black Kyurem", "Alolan Muk", "Mega Rayquaza"
+    const formFirstMatch = searchName.match(/^(\w+(?:\s+\w+)?)\s+(\w+)$/i);
+    
+    if (formFirstMatch) {
+      const possibleFormPrefix = formFirstMatch[1].toLowerCase();
+      const possibleBaseName = formFirstMatch[2].toLowerCase();
+      console.log(`Potential form pattern detected: "${possibleFormPrefix} ${possibleBaseName}"`);
+      
+      // Find potential base Pokemon
+      const basePokemon = pokedex.find(
+        (p) => p.names.English.toLowerCase() === possibleBaseName
+      );
+      
+      if (basePokemon) {
+        console.log(`Found base Pokemon: ${basePokemon.names.English}`);
+        
+        // Check for regional forms
+        if (basePokemon.regionForms) {
+          console.log(`Checking regionForms for anything matching "${possibleFormPrefix}"`);
+          
+          // Look through all regionForms for a match with our form prefix
+          const formId = Object.keys(basePokemon.regionForms).find(
+            (id) => id.toLowerCase().includes(possibleFormPrefix)
+          );
+          
+          if (formId) {
+            console.log(`Found matching form ID: ${formId}`);
+            const form = basePokemon.regionForms[formId];
+            if (form) {
+              console.log(`Found form: ${form.names.English}`);
+              return form;
+            }
           }
         }
-        console.log(
-          `No ${formPrefix} form found for ${basePokemon.names.English}`
-        );
+        
+        // Check for mega evolutions
+        if (possibleFormPrefix.includes("mega") && basePokemon.megaEvolutions) {
+          console.log(`Checking megaEvolutions for "${possibleFormPrefix}"`);
+          
+          // Look through all megaEvolutions for a match
+          const megaId = Object.keys(basePokemon.megaEvolutions).find(
+            (id) => id.toLowerCase().includes("mega")
+          );
+          
+          if (megaId) {
+            console.log(`Found matching mega ID: ${megaId}`);
+            const megaForm = basePokemon.megaEvolutions[megaId];
+            if (megaForm) {
+              console.log(`Found mega form: ${megaForm.names.English}`);
+              return megaForm;
+            }
+          }
+        }
       }
-
-      // Check for mega evolutions
-      if (megaFormPrefix && basePokemon.megaEvolutions) {
-        console.log(
-          `Looking for ${megaFormPrefix} form in megaEvolutions:`,
-          basePokemon.megaEvolutions
-        );
-        // Find the mega evolution in the base Pokemon's megaEvolutions
-        const megaEvolutionId = Object.keys(basePokemon.megaEvolutions).find(
-          (id) => id.toLowerCase().includes(megaFormPrefix)
-        );
-
-        if (megaEvolutionId) {
-          console.log(`Found mega evolution ID: ${megaEvolutionId}`);
-          // Use the mega evolution data directly from megaEvolutions
-          const megaEvolution = basePokemon.megaEvolutions[megaEvolutionId];
-          if (megaEvolution) {
-            console.log(
-              `Found mega evolution: ${megaEvolution.names.English}`
-            );
-            return megaEvolution;
+    }
+    
+    // For standard pattern searches that didn't match the above
+    // Try to extract form and base name from patterns like "alolan muk" or "mega rayquaza"
+    const formPrefixMatch = searchName.match(/^(\w+)\s+(.+)/i);
+    if (formPrefixMatch) {
+      const formPrefix = formPrefixMatch[1].toLowerCase();
+      const basePokemonName = formPrefixMatch[2].toLowerCase();
+      
+      console.log(`Looking for ${formPrefix} form of ${basePokemonName}`);
+      
+      // Find the base Pokemon
+      const basePokemon = pokedex.find(
+        (p) => p.names.English.toLowerCase() === basePokemonName
+      );
+      
+      if (basePokemon) {
+        // Check if this is a regional form
+        if (formPrefix.match(/^(alolan|alola|galarian|hisuian|paldean)$/i) && basePokemon.regionForms) {
+          console.log(`Checking for regional form: ${formPrefix}`);
+          // Find the regional form
+          const regionalFormId = Object.keys(basePokemon.regionForms).find(
+            (id) => id.toLowerCase().includes(formPrefix)
+          );
+          
+          if (regionalFormId) {
+            const regionalForm = basePokemon.regionForms[regionalFormId];
+            if (regionalForm) {
+              console.log(`Found regional form: ${regionalForm.names.English}`);
+              return regionalForm;
+            }
           }
         }
-        console.log(
-          `No ${megaFormPrefix} form found for ${basePokemon.names.English}`
-        );
+        
+        // Check if this is a mega evolution
+        if (formPrefix === "mega" && basePokemon.megaEvolutions) {
+          console.log(`Checking for mega evolution`);
+          // Find the mega evolution
+          const megaEvolutionId = Object.keys(basePokemon.megaEvolutions).find(
+            (id) => id.toLowerCase().includes("mega")
+          );
+          
+          if (megaEvolutionId) {
+            const megaEvolution = basePokemon.megaEvolutions[megaEvolutionId];
+            if (megaEvolution) {
+              console.log(`Found mega evolution: ${megaEvolution.names.English}`);
+              return megaEvolution;
+            }
+          }
+        }
       }
     }
   }
