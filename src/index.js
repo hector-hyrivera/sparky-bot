@@ -51,8 +51,12 @@ async function findPokemon(name) {
   const searchName = name.toLowerCase();
   console.log(`Searching for Pokemon: ${searchName}`);
 
+  let pokemon = null;
+  let basePokemon = null;
+  let formType = null;
+
   // First try exact match
-  let pokemon = pokedex.find((p) => {
+  pokemon = pokedex.find((p) => {
     const baseName = p.names.English.toLowerCase();
     const formName = p.formId ? p.formId.toLowerCase() : "";
     return baseName === searchName || formName === searchName;
@@ -65,6 +69,13 @@ async function findPokemon(name) {
       const formName = p.formId ? p.formId.toLowerCase() : "";
       return baseName.includes(searchName) || formName.includes(searchName);
     });
+  }
+
+  // Check if this is a form search (like "primal" or "mega")
+  if (searchName.includes("primal")) {
+    formType = "PRIMAL";
+  } else if (searchName.includes("mega")) {
+    formType = "MEGA";
   }
 
   // Direct search for mega/primal forms
@@ -92,51 +103,98 @@ async function findPokemon(name) {
     
     if (basePokemonName) {
       // Find the base Pokémon
-      const basePokemon = pokedex.find(p => 
+      basePokemon = pokedex.find(p => 
         p.names.English.toLowerCase() === basePokemonName
       );
       
       if (basePokemon && basePokemon.megaEvolutions) {
         console.log(`Found base Pokémon: ${basePokemon.names.English}`);
+        console.log("Available mega/primal forms:", Object.keys(basePokemon.megaEvolutions));
         
-        // Find the specific form that matches our search
-        const megaId = Object.keys(basePokemon.megaEvolutions).find(id => {
-          const idLower = id.toLowerCase().replace(/_/g, " ");
-          return idLower.includes(searchName);
+        // For debugging, log all form IDs
+        Object.keys(basePokemon.megaEvolutions).forEach(id => {
+          console.log(`Form ID: ${id}, Form name: ${basePokemon.megaEvolutions[id].names?.English || "Unknown"}`);
         });
         
-        if (megaId) {
-          console.log(`Found matching form ID: ${megaId}`);
-          return basePokemon.megaEvolutions[megaId];
+        // First, try an exact match by name
+        let foundForm = null;
+        for (const formId of Object.keys(basePokemon.megaEvolutions)) {
+          const form = basePokemon.megaEvolutions[formId];
+          if (form && form.names && form.names.English) {
+            if (form.names.English.toLowerCase() === searchName) {
+              console.log(`Found exact name match: ${form.names.English}`);
+              foundForm = form;
+              break;
+            }
+          }
         }
         
-        // If we can't find an exact match, try to match just by form type
-        if (searchName.includes("mega")) {
-          // For mega evolution, if it has "X" or "Y" in the search
-          const formSuffix = parts.length > 2 ? parts[2].toUpperCase() : "";
-          
-          const megaFormId = Object.keys(basePokemon.megaEvolutions).find(id => {
-            if (formSuffix && (formSuffix === "X" || formSuffix === "Y")) {
-              return id.includes(formSuffix);
-            } else {
-              // Just find any mega form if no specific form requested
-              return id.toLowerCase().includes("mega");
-            }
+        // If we found an exact match, use it
+        if (foundForm) {
+          pokemon = foundForm;
+          formType = searchName.includes("primal") ? "PRIMAL" : "MEGA";
+        }
+        
+        // If we're looking for Primal form
+        else if (searchName.includes("primal")) {
+          const primalForm = Object.keys(basePokemon.megaEvolutions).find(id => {
+            // Try different ways the primal form might be referenced
+            const idLower = id.toLowerCase();
+            const hasKeyword = idLower.includes("primal");
+            const formNameMatch = basePokemon.megaEvolutions[id].names?.English?.toLowerCase().includes("primal");
+            
+            console.log(`Checking ID: ${id}, HasKeyword: ${hasKeyword}, FormNameMatch: ${formNameMatch}`);
+            
+            return hasKeyword || formNameMatch;
           });
           
-          if (megaFormId) {
-            console.log(`Found best matching form ID: ${megaFormId}`);
-            return basePokemon.megaEvolutions[megaFormId];
+          if (primalForm) {
+            console.log(`Found primal form ID: ${primalForm}`);
+            pokemon = basePokemon.megaEvolutions[primalForm];
+            formType = "PRIMAL";
           }
-        } else if (searchName.includes("primal")) {
-          // For primal form
-          const primalFormId = Object.keys(basePokemon.megaEvolutions).find(id => 
-            id.toLowerCase().includes("primal")
-          );
+        }
+        
+        // Find the specific form that matches our search
+        else {
+          const megaId = Object.keys(basePokemon.megaEvolutions).find(id => {
+            const idLower = id.toLowerCase().replace(/_/g, " ");
+            return idLower.includes(searchName);
+          });
           
-          if (primalFormId) {
-            console.log(`Found primal form ID: ${primalFormId}`);
-            return basePokemon.megaEvolutions[primalFormId];
+          if (megaId) {
+            console.log(`Found matching form ID: ${megaId}`);
+            pokemon = basePokemon.megaEvolutions[megaId];
+            formType = searchName.includes("primal") ? "PRIMAL" : "MEGA";
+          }
+          
+          // If we can't find an exact match, try to match just by form type
+          else if (searchName.includes("mega")) {
+            // For mega evolution, if it has "X" or "Y" in the search
+            const formSuffix = parts.length > 2 ? parts[2].toUpperCase() : "";
+            
+            const megaFormId = Object.keys(basePokemon.megaEvolutions).find(id => {
+              if (formSuffix && (formSuffix === "X" || formSuffix === "Y")) {
+                return id.includes(formSuffix);
+              } else {
+                // Just find any mega form if no specific form requested
+                return id.toLowerCase().includes("mega");
+              }
+            });
+            
+            if (megaFormId) {
+              console.log(`Found best matching form ID: ${megaFormId}`);
+              pokemon = basePokemon.megaEvolutions[megaFormId];
+              formType = "MEGA";
+            }
+          } else if (searchName.includes("primal")) {
+            // Fall back to just returning the first mega evolution if it's the only one
+            if (Object.keys(basePokemon.megaEvolutions).length === 1) {
+              const onlyFormId = Object.keys(basePokemon.megaEvolutions)[0];
+              console.log(`Found only available form ID: ${onlyFormId}`);
+              pokemon = basePokemon.megaEvolutions[onlyFormId];
+              formType = "PRIMAL";
+            }
           }
         }
       }
@@ -174,7 +232,8 @@ async function findPokemon(name) {
           const megaEvolution = basePokemon.megaEvolutions[megaEvolutionId];
           if (megaEvolution) {
             console.log(`Found mega form: ${megaEvolution.names.English}`);
-            return megaEvolution;
+            pokemon = megaEvolution;
+            formType = "MEGA";
           }
         }
       }
@@ -215,7 +274,8 @@ async function findPokemon(name) {
             const form = basePokemon.regionForms[formId];
             if (form) {
               console.log(`Found form: ${form.names.English}`);
-              return form;
+              pokemon = form;
+              formType = "MEGA";
             }
           }
         }
@@ -236,7 +296,8 @@ async function findPokemon(name) {
             const specialForm = basePokemon.megaEvolutions[specialFormId];
             if (specialForm) {
               console.log(`Found special form: ${specialForm.names.English}`);
-              return specialForm;
+              pokemon = specialForm;
+              formType = "MEGA";
             }
           }
         }
@@ -273,7 +334,8 @@ async function findPokemon(name) {
             const regionalForm = basePokemon.regionForms[regionalFormId];
             if (regionalForm) {
               console.log(`Found regional form: ${regionalForm.names.English}`);
-              return regionalForm;
+              pokemon = regionalForm;
+              formType = "MEGA";
             }
           }
         }
@@ -290,7 +352,8 @@ async function findPokemon(name) {
               console.log(
                 `Found ${formPrefix} evolution: ${specialForm.names.English}`
               );
-              return specialForm;
+              pokemon = specialForm;
+              formType = "MEGA";
             }
           } else {
             // If there are multiple forms, look for the matching one
@@ -303,7 +366,8 @@ async function findPokemon(name) {
               const specialForm = basePokemon.megaEvolutions[formId];
               if (specialForm) {
                 console.log(`Found ${formPrefix} form: ${specialForm.names.English}`);
-                return specialForm;
+                pokemon = specialForm;
+                formType = "MEGA";
               }
             } else {
               // Just return the first one if we can't find a specific form
@@ -313,7 +377,8 @@ async function findPokemon(name) {
                 console.log(
                   `Found first special form: ${firstForm.names.English}`
                 );
-                return firstForm;
+                pokemon = firstForm;
+                formType = "MEGA";
               }
             }
           }
@@ -360,7 +425,8 @@ async function findPokemon(name) {
                   .includes(fullFormName.toLowerCase())
               ) {
                 console.log(`Found matching form: ${form.names.English}`);
-                return form;
+                pokemon = form;
+                formType = "MEGA";
               }
             }
           }
@@ -392,11 +458,41 @@ async function findPokemon(name) {
                 console.log(
                   `Found matching special form: ${specialForm.names.English}`
                 );
-                return specialForm;
+                pokemon = specialForm;
+                formType = "MEGA";
               }
             }
           }
         }
+      }
+    }
+  }
+
+  // Fix the image URL for special forms if needed
+  if (pokemon && formType && basePokemon && basePokemon.assetForms) {
+    console.log(`Found form type: ${formType}, checking for better image`);
+    
+    // Look for a matching form in the assetForms array
+    const matchingAssetForm = basePokemon.assetForms.find(asset => 
+      asset.form === formType
+    );
+    
+    if (matchingAssetForm) {
+      console.log(`Found matching asset form with form=${formType}`);
+      
+      // Update the image URL to use the specific form image
+      if (matchingAssetForm.image) {
+        console.log(`Updating image URL from ${pokemon.assets?.image} to ${matchingAssetForm.image}`);
+        if (!pokemon.assets) {
+          pokemon.assets = {};
+        }
+        pokemon.assets.image = matchingAssetForm.image;
+      }
+      
+      // Also update shiny image if available
+      if (matchingAssetForm.shinyImage) {
+        console.log(`Updating shiny image URL to ${matchingAssetForm.shinyImage}`);
+        pokemon.assets.shinyImage = matchingAssetForm.shinyImage;
       }
     }
   }

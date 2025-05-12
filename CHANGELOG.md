@@ -18,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Resolved "Unknown interaction" errors by implementing deferred replies
 - Fixed issue with special forms not returning correct stats and images
 - Improved matching logic for variants to ensure proper data retrieval
+- Fixed Primal Kyogre and other primal forms showing base form stats instead of primal stats
+- Added additional robust matching for special forms with enhanced debugging
+- Fixed incorrect image URLs for Primal forms by using the correct form-specific images from assetForms data
 
 ## [2025-05-12]
 
