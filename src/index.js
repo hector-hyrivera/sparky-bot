@@ -437,10 +437,8 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        thumbnail: {
-          url:
-            raidData.currentList.mega[0].assets?.image ||
-            "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+        image: {
+          url: raidData.currentList.mega.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
         },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
@@ -459,10 +457,8 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        thumbnail: {
-          url:
-            raidData.currentList.lvl5[0].assets?.image ||
-            "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+        image: {
+          url: raidData.currentList.lvl5.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
         },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
@@ -481,10 +477,8 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        thumbnail: {
-          url:
-            raidData.currentList.lvl3[0].assets?.image ||
-            "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+        image: {
+          url: raidData.currentList.lvl3.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
         },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
@@ -503,10 +497,8 @@ client.on("interactionCreate", async (interaction) => {
           value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
           inline: true,
         })),
-        thumbnail: {
-          url:
-            raidData.currentList.lvl1[0].assets?.image ||
-            "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
+        image: {
+          url: raidData.currentList.lvl1.map(pokemon => pokemon.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png").join("|"),
         },
         footer: {
           text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
