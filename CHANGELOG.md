@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2025-05-14]
+## [1.2.0]
+
+### Added
+- New `/raidboss` command that shows detailed information about a specific raid boss
+- Added detailed difficulty descriptions to show friend level and Pokémon level requirements
+- Added emoji icons throughout the bot's responses for better visual clarity
+- Added shiny images to the `/raidboss` command when available
+
+### Enhanced
+- Improved visual presentation with bold text for CP values
+- Added color-coded difficulty indicators (🟢, 🟡, 🔴) for raid difficulty levels
+- Code formatting improvements for better readability and maintenance
+
+## [1.1.0]
 
 ### Added
 - Type weaknesses (counter types) to all raid bosses in the `/currentraids` command
@@ -12,7 +25,7 @@ All notable changes to this project will be documented in this file.
 - Sorted type weaknesses by effectiveness for better raid counter selection
 - Improved readability with emoji indicators for shiny availability
 
-## [2025-05-13]
+## [1.0.1]
 
 ### Added
 - Autocomplete functionality for the `/pokemon` command
@@ -32,13 +45,13 @@ All notable changes to this project will be documented in this file.
 - Added additional robust matching for special forms with enhanced debugging
 - Fixed incorrect image URLs for Primal forms by using the correct form-specific images from assetForms data
 
-## [2025-05-12]
+## [1.0.0]
 
 ### Refactored
 - Enhanced Pokemon search functionality for complex forms and mega evolutions
 - Improved Pokemon search logic for regional forms and mega evolutions
 
-## [2025-05-11]
+## [0.9.0]
 
 ### Added
 - Support for images for all raid bosses
@@ -56,13 +69,13 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 - Revised README.md to update bot features, installation instructions, and command usage
 
-## [2025-05-10]
+## [0.8.0]
 
 ### Enhanced
 - Improved embed responses in interaction replies by adding footer text for data source
 - Removed ephemeral flag for better visibility of responses
 
-## [2025-05-08]
+## [0.7.0]
 
 ### Added
 - Regional form support for Pokemon
@@ -79,7 +92,7 @@ All notable changes to this project will be documented in this file.
 - Added step to create .env file in Docker build workflow
 - Removed .env from git tracking and updated .gitignore 
 
-## [Unreleased]
+## [0.1.0]
 
 ### Added
 - Initial bot implementation with `/pokemon`, `/hundo`, and `/currentraids` commands

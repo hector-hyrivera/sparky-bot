@@ -7,6 +7,7 @@ A Discord bot that provides Pokemon GO related information and utilities.
 - `/pokemon` - Get detailed information about any Pokemon
 - `/hundo` - Get perfect IV CP values for current raid bosses
 - `/currentraids` - List all current raid bosses and their perfect IV CP values
+- `/raidboss` - Get detailed information about a specific raid boss with images
 
 ## Installation
 
@@ -36,6 +37,14 @@ View all current raid bosses:
 - Level 5 raids
 - Level 3 raids
 - Level 1 raids
+
+### `/raidboss [name]`
+Get detailed information about a specific raid boss:
+- Perfect IV CP values (normal and weather boosted)
+- Type information and weaknesses
+- Weather boost information
+- Difficulty rating with number of raiders needed
+- Images of normal and shiny forms (if available)
 
 ## Data Sources
 
