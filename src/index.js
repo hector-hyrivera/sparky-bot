@@ -737,7 +737,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Form information
     if (pokemon.formId && pokemon.formId !== pokemon.id) {
-      response += `Form: ${pokemon.formId.replace(/_/g, " ")}\n`;
+      response += `🔄 **Form**: ${pokemon.formId.replace(/_/g, " ")}\n`;
     }
 
     // Types
@@ -745,16 +745,17 @@ client.on("interactionCreate", async (interaction) => {
     if (pokemon.secondaryType) {
       types.push(pokemon.secondaryType.names.English);
     }
-    response += `Type: ${types.join(", ")}\n`;
+    response += `🏷️ **Type**: ${types.join(", ")}\n`;
 
     // Stats
-    response += `Stamina: ${pokemon.stats.stamina}\n`;
-    response += `Attack: ${pokemon.stats.attack}\n`;
-    response += `Defense: ${pokemon.stats.defense}\n`;
+    response += `\n📊 **Base Stats**:\n`;
+    response += `❤️ **Stamina**: ${pokemon.stats.stamina}\n`;
+    response += `⚔️ **Attack**: ${pokemon.stats.attack}\n`;
+    response += `🛡️ **Defense**: ${pokemon.stats.defense}\n`;
 
     // Quick Moves
     if (pokemon.quickMoves) {
-      response += "\n**Fast Attacks:**\n";
+      response += "\n⚡ **Fast Attacks**:\n";
       Object.values(pokemon.quickMoves).forEach((move) => {
         response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
       });
@@ -762,7 +763,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Cinematic Moves
     if (pokemon.cinematicMoves) {
-      response += "\n**Special Attacks:**\n";
+      response += "\n💥 **Special Attacks**:\n";
       Object.values(pokemon.cinematicMoves).forEach((move) => {
         response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
       });
@@ -773,7 +774,7 @@ client.on("interactionCreate", async (interaction) => {
       pokemon.eliteCinematicMoves &&
       Object.keys(pokemon.eliteCinematicMoves).length > 0
     ) {
-      response += "\n**Elite Special Attacks:**\n";
+      response += "\n✨ **Elite Special Attacks**:\n";
       Object.values(pokemon.eliteCinematicMoves).forEach((move) => {
         response += `• ${move.names.English} (${move.type.names.English}) - ${move.power} power\n`;
       });
@@ -781,7 +782,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Regional Forms
     if (pokemon.regionForms && pokemon.regionForms.length > 0) {
-      response += "\n**Regional Forms:**\n";
+      response += "\n🌎 **Regional Forms**:\n";
       pokemon.regionForms.forEach((form) => {
         response += `• ${form.names.English}`;
         if (form.primaryType) {
@@ -797,7 +798,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // Evolution
     if (pokemon.evolutions && pokemon.evolutions.length > 0) {
-      response += "\n**Evolves To:**\n";
+      response += "\n⬆️ **Evolves To**:\n";
       pokemon.evolutions.forEach((evo) => {
         response += `• ${evo.id.replace(/_/g, " ")}`;
         if (evo.candies) {
@@ -809,13 +810,13 @@ client.on("interactionCreate", async (interaction) => {
 
     // Mega Evolution
     if (pokemon.hasMegaEvolution) {
-      response += "\n**Mega Evolution Available**\n";
+      response += "\n🔄 **Mega Evolution Available**\n";
       if (pokemon.megaEvolutions) {
         Object.values(pokemon.megaEvolutions).forEach((mega) => {
           response += `• ${mega.names.English}\n`;
-          response += `  Attack: ${mega.stats.attack}\n`;
-          response += `  Defense: ${mega.stats.defense}\n`;
-          response += `  Stamina: ${mega.stats.stamina}\n`;
+          response += `  ⚔️ Attack: ${mega.stats.attack}\n`;
+          response += `  🛡️ Defense: ${mega.stats.defense}\n`;
+          response += `  ❤️ Stamina: ${mega.stats.stamina}\n`;
         });
       }
     }
@@ -874,17 +875,17 @@ client.on("interactionCreate", async (interaction) => {
     const perfectCPBoosted = pokemon.cpRangeBoost[1];
 
     const embed = {
-      title: `Perfect IV CP for ${pokemon.names.English}`,
+      title: `🏆 Perfect IV CP for ${pokemon.names.English}`,
       color: 0x00ff00, // Green color
       fields: [
         {
-          name: "Normal CP",
-          value: perfectCP.toString(),
+          name: "🎯 Normal CP",
+          value: `**${perfectCP}**`,
           inline: true,
         },
         {
-          name: "Weather Boosted CP",
-          value: perfectCPBoosted.toString(),
+          name: "☀️ Weather Boosted CP",
+          value: `**${perfectCPBoosted}**`,
           inline: true,
         },
       ],
@@ -919,7 +920,7 @@ client.on("interactionCreate", async (interaction) => {
     // Mega Raids
     if (raidData.currentList.mega?.length > 0) {
       const megaEmbed = {
-        title: "Mega Raids",
+        title: "🔄 Mega Raids",
         color: 0xff0000, // Red
         fields: raidData.currentList.mega.map((pokemon) => {
           // Get counter types for this Pokemon
@@ -932,9 +933,9 @@ client.on("interactionCreate", async (interaction) => {
           
           return {
             name: pokemon.names.English,
-            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
-              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
-            }\nShiny? ${shinyEmoji}`,
+            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
+              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
         }),
@@ -953,7 +954,7 @@ client.on("interactionCreate", async (interaction) => {
     // Level 5 Raids
     if (raidData.currentList.lvl5?.length > 0) {
       const lvl5Embed = {
-        title: "Level 5 Raids",
+        title: "⭐⭐⭐⭐⭐ Level 5 Raids",
         color: 0xffa500, // Orange
         fields: raidData.currentList.lvl5.map((pokemon) => {
           // Get counter types for this Pokemon
@@ -966,9 +967,9 @@ client.on("interactionCreate", async (interaction) => {
           
           return {
             name: pokemon.names.English,
-            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
-              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
-            }\nShiny? ${shinyEmoji}`,
+            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
+              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
         }),
@@ -987,7 +988,7 @@ client.on("interactionCreate", async (interaction) => {
     // Level 3 Raids
     if (raidData.currentList.lvl3?.length > 0) {
       const lvl3Embed = {
-        title: "Level 3 Raids",
+        title: "⭐⭐⭐ Level 3 Raids",
         color: 0x0000ff, // Blue
         fields: raidData.currentList.lvl3.map((pokemon) => {
           // Get counter types for this Pokemon
@@ -1000,9 +1001,9 @@ client.on("interactionCreate", async (interaction) => {
           
           return {
             name: pokemon.names.English,
-            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
-              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
-            }\nShiny? ${shinyEmoji}`,
+            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
+              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
         }),
@@ -1021,7 +1022,7 @@ client.on("interactionCreate", async (interaction) => {
     // Level 1 Raids
     if (raidData.currentList.lvl1?.length > 0) {
       const lvl1Embed = {
-        title: "Level 1 Raids",
+        title: "⭐ Level 1 Raids",
         color: 0x00ff00, // Green
         fields: raidData.currentList.lvl1.map((pokemon) => {
           // Get counter types for this Pokemon
@@ -1034,9 +1035,9 @@ client.on("interactionCreate", async (interaction) => {
           
           return {
             name: pokemon.names.English,
-            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
-              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
-            }\nShiny? ${shinyEmoji}`,
+            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
+              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
         }),
@@ -1121,15 +1122,15 @@ client.on("interactionCreate", async (interaction) => {
       title: `${boss.names.English} - ${raidLevel}`,
       color: color,
       description: `**Types**: ${boss.types.join(", ")}\n\n` +
-        `**Perfect IV CP**: ${boss.cpRange[1]}\n` +
-        `**Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n` +
-        (countersText ? `**Weak to**: ${countersText}\n\n` : "") +
-        (boss.weather ? `**Boosted in**: ${boss.weather.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ")} weather\n\n` : "") +
-        `**Shiny Available**: ${boss.shiny ? "Yes" : "No"}\n\n` +
-        (boss.battleResult ? "**Difficulty**:\n" +
-          `- Easy (Solo): ${Math.round(boss.battleResult.easy.totalEstimator * 100) / 100} raiders needed\n` +
-          `- Normal: ${Math.round(boss.battleResult.normal.totalEstimator * 100) / 100} raiders needed\n` +
-          `- Hard (Expert): ${Math.round(boss.battleResult.hard.totalEstimator * 100) / 100} raiders needed` : ""),
+        `🏆 **Perfect IV CP**: ${boss.cpRange[1]}\n` +
+        `☀️ **Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n` +
+        (countersText ? `⚔️ **Weak to**: ${countersText}\n\n` : "") +
+        (boss.weather ? `🌤️ **Boosted in**: ${boss.weather.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ")} weather\n\n` : "") +
+        `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}\n\n` +
+        (boss.battleResult ? "👥 **Difficulty**:\n" +
+          `- 🟢 Easy: ${Math.round(boss.battleResult.easy.totalEstimator * 100) / 100} raiders needed (Friend Level: None, Pokémon Level: 20)\n` +
+          `- 🟡 Normal: ${Math.round(boss.battleResult.normal.totalEstimator * 100) / 100} raiders needed (Friend Level: Ultra Friends, Pokémon Level: 30)\n` +
+          `- 🔴 Hard: ${Math.round(boss.battleResult.hard.totalEstimator * 100) / 100} raiders needed (Friend Level: Best Friends, Pokémon Level: 40)` : ""),
       image: {
         url: boss.assets?.image || 
              "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
