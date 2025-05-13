@@ -525,6 +525,16 @@ const commands = [
         .setRequired(true)
         .setAutocomplete(true)
     ),
+  new SlashCommandBuilder()
+    .setName("raidboss")
+    .setDescription("Get detailed information about a raid boss")
+    .addStringOption((option) =>
+      option
+        .setName("name")
+        .setDescription("The name of the raid boss")
+        .setRequired(true)
+        .setAutocomplete(true)
+    ),
 ].map((command) => command.toJSON());
 
 // Register commands
@@ -665,6 +675,47 @@ client.on("interactionCreate", async (interaction) => {
     
     // Slice to first 25 results and respond
     await interaction.respond(allVariants.slice(0, 25));
+    return;
+  }
+
+  // Handle autocomplete for raidboss command
+  if (interaction.isAutocomplete() && commandName === "raidboss") {
+    const raidData = await getRaidBosses();
+    if (!raidData) {
+      await interaction.respond([]);
+      return;
+    }
+
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    const allRaids = [
+      ...(raidData.currentList.mega || []),
+      ...(raidData.currentList.lvl5 || []),
+      ...(raidData.currentList.lvl3 || []),
+      ...(raidData.currentList.lvl1 || []),
+    ];
+
+    // Don't filter if the user hasn't typed anything yet
+    if (!focusedValue) {
+      const options = allRaids.slice(0, 25).map(pokemon => ({
+        name: pokemon.names.English,
+        value: pokemon.names.English
+      }));
+      
+      await interaction.respond(options);
+      return;
+    }
+
+    const filtered = allRaids
+      .filter((pokemon) =>
+        pokemon.names.English.toLowerCase().includes(focusedValue)
+      )
+      .slice(0, 25)
+      .map((pokemon) => ({
+        name: pokemon.names.English,
+        value: pokemon.names.English,
+      }));
+
+    await interaction.respond(filtered);
     return;
   }
 
@@ -1004,6 +1055,106 @@ client.on("interactionCreate", async (interaction) => {
     // Send all embeds
     await interaction.reply({
       embeds: embeds,
+    });
+  }
+
+  if (commandName === "raidboss") {
+    await interaction.deferReply();
+    
+    const bossName = interaction.options.getString("name");
+    const raidData = await getRaidBosses();
+
+    if (!raidData) {
+      await interaction.editReply("Sorry, I couldn't fetch the raid data at the moment.");
+      return;
+    }
+
+    // Collect all raid bosses from different tiers
+    const allRaids = [
+      ...(raidData.currentList.mega || []),
+      ...(raidData.currentList.lvl5 || []),
+      ...(raidData.currentList.lvl3 || []),
+      ...(raidData.currentList.lvl1 || []),
+    ];
+
+    // Find the selected raid boss
+    const boss = allRaids.find(
+      (p) => p.names.English.toLowerCase() === bossName.toLowerCase()
+    );
+
+    if (!boss) {
+      await interaction.editReply(`Couldn't find ${bossName} in the current raid bosses.`);
+      return;
+    }
+
+    // Determine the raid level and color
+    let raidLevel = "";
+    let color = 0x00ff00; // Default green
+
+    if (boss.level === "mega") {
+      raidLevel = "Mega Raid";
+      color = 0xff0000; // Red
+    } else if (raidData.currentList.lvl5.includes(boss)) {
+      raidLevel = "Level 5 Raid";
+      color = 0xffa500; // Orange
+    } else if (raidData.currentList.lvl3.includes(boss)) {
+      raidLevel = "Level 3 Raid";
+      color = 0x0000ff; // Blue
+    } else if (raidData.currentList.lvl1.includes(boss)) {
+      raidLevel = "Level 1 Raid";
+      color = 0x00ff00; // Green
+    }
+
+    // Build the counters section
+    let countersText = "";
+    if (boss.counter) {
+      // Sort counters by effectiveness
+      const sortedCounters = Object.entries(boss.counter)
+        .sort(([, a], [, b]) => b - a)
+        .map(([type, multiplier]) => `${type} (${multiplier}x)`);
+      
+      countersText = sortedCounters.join(", ");
+    }
+
+    // Create the main embed with normal image
+    const mainEmbed = {
+      title: `${boss.names.English} - ${raidLevel}`,
+      color: color,
+      description: `**Types**: ${boss.types.join(", ")}\n\n` +
+        `**Perfect IV CP**: ${boss.cpRange[1]}\n` +
+        `**Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n` +
+        (countersText ? `**Weak to**: ${countersText}\n\n` : "") +
+        (boss.weather ? `**Boosted in**: ${boss.weather.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ")} weather\n\n` : "") +
+        `**Shiny Available**: ${boss.shiny ? "Yes" : "No"}\n\n` +
+        (boss.battleResult ? "**Difficulty**:\n" +
+          `- Easy (Solo): ${Math.round(boss.battleResult.easy.totalEstimator * 100) / 100} raiders needed\n` +
+          `- Normal: ${Math.round(boss.battleResult.normal.totalEstimator * 100) / 100} raiders needed\n` +
+          `- Hard (Expert): ${Math.round(boss.battleResult.hard.totalEstimator * 100) / 100} raiders needed` : ""),
+      image: {
+        url: boss.assets?.image || 
+             "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
+      },
+      footer: {
+        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)"
+      }
+    };
+
+    // Only create shiny embed if the boss can be shiny and has a shiny image
+    const embeds = [mainEmbed];
+    
+    if (boss.shiny && boss.assets?.shinyImage) {
+      const shinyEmbed = {
+        title: `${boss.names.English} - Shiny Form`,
+        color: color,
+        image: {
+          url: boss.assets.shinyImage
+        }
+      };
+      embeds.push(shinyEmbed);
+    }
+
+    await interaction.editReply({
+      embeds: embeds
     });
   }
 });
