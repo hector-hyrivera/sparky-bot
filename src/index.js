@@ -79,13 +79,16 @@ async function findPokemon(name) {
   }
 
   // Direct search for mega/primal forms
-  if (!pokemon && (searchName.includes("mega") || searchName.includes("primal"))) {
+  if (
+    !pokemon &&
+    (searchName.includes("mega") || searchName.includes("primal"))
+  ) {
     console.log("Searching for Mega or Primal form directly...");
-    
+
     // Get base name of the Pokémon
     const parts = searchName.split(" ");
     let basePokemonName = "";
-    
+
     if (searchName.includes("mega")) {
       // Handle "Mega X Y" pattern
       if (parts.length > 2 && (parts[2] === "x" || parts[2] === "y")) {
@@ -98,24 +101,31 @@ async function findPokemon(name) {
       // Handle "Primal Pokémon" pattern
       basePokemonName = parts.slice(1).join(" ");
     }
-    
+
     console.log(`Extracted base name: ${basePokemonName}`);
-    
+
     if (basePokemonName) {
       // Find the base Pokémon
-      basePokemon = pokedex.find(p => 
-        p.names.English.toLowerCase() === basePokemonName
+      basePokemon = pokedex.find(
+        (p) => p.names.English.toLowerCase() === basePokemonName
       );
-      
+
       if (basePokemon && basePokemon.megaEvolutions) {
         console.log(`Found base Pokémon: ${basePokemon.names.English}`);
-        console.log("Available mega/primal forms:", Object.keys(basePokemon.megaEvolutions));
-        
+        console.log(
+          "Available mega/primal forms:",
+          Object.keys(basePokemon.megaEvolutions)
+        );
+
         // For debugging, log all form IDs
-        Object.keys(basePokemon.megaEvolutions).forEach(id => {
-          console.log(`Form ID: ${id}, Form name: ${basePokemon.megaEvolutions[id].names?.English || "Unknown"}`);
+        Object.keys(basePokemon.megaEvolutions).forEach((id) => {
+          console.log(
+            `Form ID: ${id}, Form name: ${
+              basePokemon.megaEvolutions[id].names?.English || "Unknown"
+            }`
+          );
         });
-        
+
         // First, try an exact match by name
         let foundForm = null;
         for (const formId of Object.keys(basePokemon.megaEvolutions)) {
@@ -128,60 +138,69 @@ async function findPokemon(name) {
             }
           }
         }
-        
+
         // If we found an exact match, use it
         if (foundForm) {
           pokemon = foundForm;
           formType = searchName.includes("primal") ? "PRIMAL" : "MEGA";
         }
-        
+
         // If we're looking for Primal form
         else if (searchName.includes("primal")) {
-          const primalForm = Object.keys(basePokemon.megaEvolutions).find(id => {
-            // Try different ways the primal form might be referenced
-            const idLower = id.toLowerCase();
-            const hasKeyword = idLower.includes("primal");
-            const formNameMatch = basePokemon.megaEvolutions[id].names?.English?.toLowerCase().includes("primal");
-            
-            console.log(`Checking ID: ${id}, HasKeyword: ${hasKeyword}, FormNameMatch: ${formNameMatch}`);
-            
-            return hasKeyword || formNameMatch;
-          });
-          
+          const primalForm = Object.keys(basePokemon.megaEvolutions).find(
+            (id) => {
+              // Try different ways the primal form might be referenced
+              const idLower = id.toLowerCase();
+              const hasKeyword = idLower.includes("primal");
+              const formNameMatch =
+                basePokemon.megaEvolutions[
+                  id
+                ].names?.English?.toLowerCase().includes("primal");
+
+              console.log(
+                `Checking ID: ${id}, HasKeyword: ${hasKeyword}, FormNameMatch: ${formNameMatch}`
+              );
+
+              return hasKeyword || formNameMatch;
+            }
+          );
+
           if (primalForm) {
             console.log(`Found primal form ID: ${primalForm}`);
             pokemon = basePokemon.megaEvolutions[primalForm];
             formType = "PRIMAL";
           }
         }
-        
+
         // Find the specific form that matches our search
         else {
-          const megaId = Object.keys(basePokemon.megaEvolutions).find(id => {
+          const megaId = Object.keys(basePokemon.megaEvolutions).find((id) => {
             const idLower = id.toLowerCase().replace(/_/g, " ");
             return idLower.includes(searchName);
           });
-          
+
           if (megaId) {
             console.log(`Found matching form ID: ${megaId}`);
             pokemon = basePokemon.megaEvolutions[megaId];
             formType = searchName.includes("primal") ? "PRIMAL" : "MEGA";
           }
-          
+
           // If we can't find an exact match, try to match just by form type
           else if (searchName.includes("mega")) {
             // For mega evolution, if it has "X" or "Y" in the search
             const formSuffix = parts.length > 2 ? parts[2].toUpperCase() : "";
-            
-            const megaFormId = Object.keys(basePokemon.megaEvolutions).find(id => {
-              if (formSuffix && (formSuffix === "X" || formSuffix === "Y")) {
-                return id.includes(formSuffix);
-              } else {
-                // Just find any mega form if no specific form requested
-                return id.toLowerCase().includes("mega");
+
+            const megaFormId = Object.keys(basePokemon.megaEvolutions).find(
+              (id) => {
+                if (formSuffix && (formSuffix === "X" || formSuffix === "Y")) {
+                  return id.includes(formSuffix);
+                } else {
+                  // Just find any mega form if no specific form requested
+                  return id.toLowerCase().includes("mega");
+                }
               }
-            });
-            
+            );
+
             if (megaFormId) {
               console.log(`Found best matching form ID: ${megaFormId}`);
               pokemon = basePokemon.megaEvolutions[megaFormId];
@@ -281,15 +300,20 @@ async function findPokemon(name) {
         }
 
         // Check for mega evolutions or primal forms
-        if ((possibleFormPrefix.includes("mega") || possibleFormPrefix.includes("primal")) && 
-            basePokemon.megaEvolutions) {
+        if (
+          (possibleFormPrefix.includes("mega") ||
+            possibleFormPrefix.includes("primal")) &&
+          basePokemon.megaEvolutions
+        ) {
           console.log(`Checking megaEvolutions for "${possibleFormPrefix}"`);
 
           // Look through all megaEvolutions for a match
-          const specialFormId = Object.keys(basePokemon.megaEvolutions).find((id) => {
-            const idLower = id.toLowerCase();
-            return idLower.includes(possibleFormPrefix.replace(/\s+/g, "_"));
-          });
+          const specialFormId = Object.keys(basePokemon.megaEvolutions).find(
+            (id) => {
+              const idLower = id.toLowerCase();
+              return idLower.includes(possibleFormPrefix.replace(/\s+/g, "_"));
+            }
+          );
 
           if (specialFormId) {
             console.log(`Found matching special form ID: ${specialFormId}`);
@@ -341,7 +365,10 @@ async function findPokemon(name) {
         }
 
         // Check if this is a mega evolution or primal form
-        if ((formPrefix === "mega" || formPrefix === "primal") && basePokemon.megaEvolutions) {
+        if (
+          (formPrefix === "mega" || formPrefix === "primal") &&
+          basePokemon.megaEvolutions
+        ) {
           console.log(`Checking for ${formPrefix} evolution`);
 
           // Check if there's only one form
@@ -357,15 +384,19 @@ async function findPokemon(name) {
             }
           } else {
             // If there are multiple forms, look for the matching one
-            const formId = Object.keys(basePokemon.megaEvolutions).find(id => {
-              const idLower = id.toLowerCase();
-              return idLower.includes(formPrefix);
-            });
+            const formId = Object.keys(basePokemon.megaEvolutions).find(
+              (id) => {
+                const idLower = id.toLowerCase();
+                return idLower.includes(formPrefix);
+              }
+            );
 
             if (formId) {
               const specialForm = basePokemon.megaEvolutions[formId];
               if (specialForm) {
-                console.log(`Found ${formPrefix} form: ${specialForm.names.English}`);
+                console.log(
+                  `Found ${formPrefix} form: ${specialForm.names.English}`
+                );
                 pokemon = specialForm;
                 formType = "MEGA";
               }
@@ -471,27 +502,31 @@ async function findPokemon(name) {
   // Fix the image URL for special forms if needed
   if (pokemon && formType && basePokemon && basePokemon.assetForms) {
     console.log(`Found form type: ${formType}, checking for better image`);
-    
+
     // Look for a matching form in the assetForms array
-    const matchingAssetForm = basePokemon.assetForms.find(asset => 
-      asset.form === formType
+    const matchingAssetForm = basePokemon.assetForms.find(
+      (asset) => asset.form === formType
     );
-    
+
     if (matchingAssetForm) {
       console.log(`Found matching asset form with form=${formType}`);
-      
+
       // Update the image URL to use the specific form image
       if (matchingAssetForm.image) {
-        console.log(`Updating image URL from ${pokemon.assets?.image} to ${matchingAssetForm.image}`);
+        console.log(
+          `Updating image URL from ${pokemon.assets?.image} to ${matchingAssetForm.image}`
+        );
         if (!pokemon.assets) {
           pokemon.assets = {};
         }
         pokemon.assets.image = matchingAssetForm.image;
       }
-      
+
       // Also update shiny image if available
       if (matchingAssetForm.shinyImage) {
-        console.log(`Updating shiny image URL to ${matchingAssetForm.shinyImage}`);
+        console.log(
+          `Updating shiny image URL to ${matchingAssetForm.shinyImage}`
+        );
         pokemon.assets.shinyImage = matchingAssetForm.shinyImage;
       }
     }
@@ -610,44 +645,52 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     const focusedValue = interaction.options.getFocused().toLowerCase();
-    
+
     // Don't filter if the user hasn't typed anything yet
     if (!focusedValue) {
       // Just return some popular Pokemon as defaults
       const popularPokemon = [
-        "Pikachu", "Charizard", "Mewtwo", "Eevee", "Dragonite", 
-        "Tyranitar", "Rayquaza", "Garchomp", "Lucario", "Greninja"
-      ].map(name => ({ name, value: name }));
-      
+        "Pikachu",
+        "Charizard",
+        "Mewtwo",
+        "Eevee",
+        "Dragonite",
+        "Tyranitar",
+        "Rayquaza",
+        "Garchomp",
+        "Lucario",
+        "Greninja",
+      ].map((name) => ({ name, value: name }));
+
       await interaction.respond(popularPokemon);
       return;
     }
-    
+
     // Create a list to hold all variants
     const allVariants = [];
-    
+
     // Process all Pokemon and their variants
-    pokedex.forEach(pokemon => {
+    pokedex.forEach((pokemon) => {
       // Add base Pokemon
       if (pokemon.names.English.toLowerCase().includes(focusedValue)) {
         allVariants.push({
           name: pokemon.names.English,
-          value: pokemon.names.English
+          value: pokemon.names.English,
         });
       }
-      
+
       // Add mega evolutions if they exist
       if (pokemon.megaEvolutions) {
-        Object.values(pokemon.megaEvolutions).forEach(mega => {
+        Object.values(pokemon.megaEvolutions).forEach((mega) => {
           if (mega.names.English.toLowerCase().includes(focusedValue)) {
             allVariants.push({
               name: mega.names.English,
-              value: mega.names.English
+              value: mega.names.English,
             });
           }
         });
       }
-      
+
       // Add regional forms if they exist
       if (pokemon.regionForms) {
         Object.entries(pokemon.regionForms).forEach(([formId, form]) => {
@@ -656,7 +699,7 @@ client.on("interactionCreate", async (interaction) => {
             if (form.names.English.toLowerCase().includes(focusedValue)) {
               allVariants.push({
                 name: form.names.English,
-                value: form.names.English
+                value: form.names.English,
               });
             }
           } else {
@@ -665,14 +708,14 @@ client.on("interactionCreate", async (interaction) => {
             if (formName.toLowerCase().includes(focusedValue)) {
               allVariants.push({
                 name: formName,
-                value: formName
+                value: formName,
               });
             }
           }
         });
       }
     });
-    
+
     // Slice to first 25 results and respond
     await interaction.respond(allVariants.slice(0, 25));
     return;
@@ -696,11 +739,11 @@ client.on("interactionCreate", async (interaction) => {
 
     // Don't filter if the user hasn't typed anything yet
     if (!focusedValue) {
-      const options = allRaids.slice(0, 25).map(pokemon => ({
+      const options = allRaids.slice(0, 25).map((pokemon) => ({
         name: pokemon.names.English,
-        value: pokemon.names.English
+        value: pokemon.names.English,
       }));
-      
+
       await interaction.respond(options);
       return;
     }
@@ -722,7 +765,7 @@ client.on("interactionCreate", async (interaction) => {
   if (commandName === "pokemon") {
     // Defer the reply immediately
     await interaction.deferReply();
-    
+
     const pokemonName = interaction.options.getString("name").toLowerCase();
     const pokemon = await findPokemon(pokemonName);
 
@@ -924,17 +967,25 @@ client.on("interactionCreate", async (interaction) => {
         color: 0xff0000, // Red
         fields: raidData.currentList.mega.map((pokemon) => {
           // Get counter types for this Pokemon
-          const counterTypes = pokemon.counter ? 
-            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
-            [];
-          
+          const counterTypes = pokemon.counter
+            ? Object.keys(pokemon.counter).sort(
+                (a, b) => pokemon.counter[b] - pokemon.counter[a]
+              )
+            : [];
+
           // Shiny availability emoji
           const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-          
+
           return {
             name: pokemon.names.English,
-            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
-              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            value: `🏆 Perfect IV CP: **${
+              pokemon.cpRange[1]
+            }**\n☀️ Perfect IV CP (Weather Boosted): **${
+              pokemon.cpRangeBoost[1]
+            }**${
+              counterTypes.length > 0
+                ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
+                : ""
             }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
@@ -958,17 +1009,25 @@ client.on("interactionCreate", async (interaction) => {
         color: 0xffa500, // Orange
         fields: raidData.currentList.lvl5.map((pokemon) => {
           // Get counter types for this Pokemon
-          const counterTypes = pokemon.counter ? 
-            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
-            [];
-          
+          const counterTypes = pokemon.counter
+            ? Object.keys(pokemon.counter).sort(
+                (a, b) => pokemon.counter[b] - pokemon.counter[a]
+              )
+            : [];
+
           // Shiny availability emoji
           const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-          
+
           return {
             name: pokemon.names.English,
-            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
-              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            value: `🏆 Perfect IV CP: **${
+              pokemon.cpRange[1]
+            }**\n☀️ Perfect IV CP (Weather Boosted): **${
+              pokemon.cpRangeBoost[1]
+            }**${
+              counterTypes.length > 0
+                ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
+                : ""
             }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
@@ -992,17 +1051,25 @@ client.on("interactionCreate", async (interaction) => {
         color: 0x0000ff, // Blue
         fields: raidData.currentList.lvl3.map((pokemon) => {
           // Get counter types for this Pokemon
-          const counterTypes = pokemon.counter ? 
-            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
-            [];
-          
+          const counterTypes = pokemon.counter
+            ? Object.keys(pokemon.counter).sort(
+                (a, b) => pokemon.counter[b] - pokemon.counter[a]
+              )
+            : [];
+
           // Shiny availability emoji
           const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-          
+
           return {
             name: pokemon.names.English,
-            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
-              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            value: `🏆 Perfect IV CP: **${
+              pokemon.cpRange[1]
+            }**\n☀️ Perfect IV CP (Weather Boosted): **${
+              pokemon.cpRangeBoost[1]
+            }**${
+              counterTypes.length > 0
+                ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
+                : ""
             }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
@@ -1026,17 +1093,25 @@ client.on("interactionCreate", async (interaction) => {
         color: 0x00ff00, // Green
         fields: raidData.currentList.lvl1.map((pokemon) => {
           // Get counter types for this Pokemon
-          const counterTypes = pokemon.counter ? 
-            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
-            [];
-          
+          const counterTypes = pokemon.counter
+            ? Object.keys(pokemon.counter).sort(
+                (a, b) => pokemon.counter[b] - pokemon.counter[a]
+              )
+            : [];
+
           // Shiny availability emoji
           const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-          
+
           return {
             name: pokemon.names.English,
-            value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**${
-              counterTypes.length > 0 ? `\n⚔️ Weak to: ${counterTypes.join(", ")}` : ""
+            value: `🏆 Perfect IV CP: **${
+              pokemon.cpRange[1]
+            }**\n☀️ Perfect IV CP (Weather Boosted): **${
+              pokemon.cpRangeBoost[1]
+            }**${
+              counterTypes.length > 0
+                ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
+                : ""
             }\n✨ Shiny? ${shinyEmoji}`,
             inline: true,
           };
@@ -1061,12 +1136,14 @@ client.on("interactionCreate", async (interaction) => {
 
   if (commandName === "raidboss") {
     await interaction.deferReply();
-    
+
     const bossName = interaction.options.getString("name");
     const raidData = await getRaidBosses();
 
     if (!raidData) {
-      await interaction.editReply("Sorry, I couldn't fetch the raid data at the moment.");
+      await interaction.editReply(
+        "Sorry, I couldn't fetch the raid data at the moment."
+      );
       return;
     }
 
@@ -1084,7 +1161,9 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     if (!boss) {
-      await interaction.editReply(`Couldn't find ${bossName} in the current raid bosses.`);
+      await interaction.editReply(
+        `Couldn't find ${bossName} in the current raid bosses.`
+      );
       return;
     }
 
@@ -1113,7 +1192,7 @@ client.on("interactionCreate", async (interaction) => {
       const sortedCounters = Object.entries(boss.counter)
         .sort(([, a], [, b]) => b - a)
         .map(([type, multiplier]) => `${type} (${multiplier}x)`);
-      
+
       countersText = sortedCounters.join(", ");
     }
 
@@ -1121,41 +1200,55 @@ client.on("interactionCreate", async (interaction) => {
     const mainEmbed = {
       title: `${boss.names.English} - ${raidLevel}`,
       color: color,
-      description: `**Types**: ${boss.types.join(", ")}\n\n` +
+      description:
+        `**Types**: ${boss.types.join(", ")}\n\n` +
         `🏆 **Perfect IV CP**: ${boss.cpRange[1]}\n` +
         `☀️ **Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n` +
         (countersText ? `⚔️ **Weak to**: ${countersText}\n\n` : "") +
-        (boss.weather ? `🌤️ **Boosted in**: ${boss.weather.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(", ")} weather\n\n` : "") +
+        (boss.weather
+          ? `🌤️ **Boosted in**: ${boss.weather
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(", ")} weather\n\n`
+          : "") +
         `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}\n\n` +
-        (boss.battleResult ? "👥 **Difficulty**:\n" +
-          `- 🟢 Easy: ${Math.round(boss.battleResult.easy.totalEstimator * 100) / 100} raiders needed (Friend Level: None, Pokémon Level: 20)\n` +
-          `- 🟡 Normal: ${Math.round(boss.battleResult.normal.totalEstimator * 100) / 100} raiders needed (Friend Level: Ultra Friends, Pokémon Level: 30)\n` +
-          `- 🔴 Hard: ${Math.round(boss.battleResult.hard.totalEstimator * 100) / 100} raiders needed (Friend Level: Best Friends, Pokémon Level: 40)` : ""),
+        (boss.battleResult
+          ? "👥 **Difficulty**:\n" +
+            `- 🟢 Easy: ${
+              Math.round(boss.battleResult.easy.totalEstimator * 100) / 100
+            } raiders needed (Friend Level: None, Pokémon Level: 20)\n` +
+            `- 🟡 Normal: ${
+              Math.round(boss.battleResult.normal.totalEstimator * 100) / 100
+            } raiders needed (Friend Level: Ultra Friends, Pokémon Level: 30)\n` +
+            `- 🔴 Hard: ${
+              Math.round(boss.battleResult.hard.totalEstimator * 100) / 100
+            } raiders needed (Friend Level: Best Friends, Pokémon Level: 40)`
+          : ""),
       image: {
-        url: boss.assets?.image || 
-             "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
+        url:
+          boss.assets?.image ||
+          "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
       },
       footer: {
-        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)"
-      }
+        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
+      },
     };
 
     // Only create shiny embed if the boss can be shiny and has a shiny image
     const embeds = [mainEmbed];
-    
+
     if (boss.shiny && boss.assets?.shinyImage) {
       const shinyEmbed = {
         title: `${boss.names.English} - Shiny Form`,
         color: color,
         image: {
-          url: boss.assets.shinyImage
-        }
+          url: boss.assets.shinyImage,
+        },
       };
       embeds.push(shinyEmbed);
     }
 
     await interaction.editReply({
-      embeds: embeds
+      embeds: embeds,
     });
   }
 });
