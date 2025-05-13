@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-05-14]
+
+### Added
+- Type weaknesses (counter types) to all raid bosses in the `/currentraids` command
+- Shiny availability indicators (✅/❌) for Pokemon in both `/currentraids` and `/pokemon` commands
+
+### Enhanced
+- Sorted type weaknesses by effectiveness for better raid counter selection
+- Improved readability with emoji indicators for shiny availability
+
 ## [2025-05-13]
 
 ### Added

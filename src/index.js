@@ -684,6 +684,10 @@ client.on("interactionCreate", async (interaction) => {
 
     let response = `**${pokemon.names.English}**\n`;
 
+    // Shiny availability
+    const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+    response += `Shiny? ${shinyEmoji}\n`;
+
     // Form information
     if (pokemon.formId && pokemon.formId !== pokemon.id) {
       response += `Form: ${pokemon.formId.replace(/_/g, " ")}\n`;
@@ -870,11 +874,23 @@ client.on("interactionCreate", async (interaction) => {
       const megaEmbed = {
         title: "Mega Raids",
         color: 0xff0000, // Red
-        fields: raidData.currentList.mega.map((pokemon) => ({
-          name: pokemon.names.English,
-          value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
-          inline: true,
-        })),
+        fields: raidData.currentList.mega.map((pokemon) => {
+          // Get counter types for this Pokemon
+          const counterTypes = pokemon.counter ? 
+            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
+            [];
+          
+          // Shiny availability emoji
+          const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+          
+          return {
+            name: pokemon.names.English,
+            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
+              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
+            }\nShiny? ${shinyEmoji}`,
+            inline: true,
+          };
+        }),
         thumbnail: {
           url:
             raidData.currentList.mega[0]?.assets?.image ||
@@ -892,11 +908,23 @@ client.on("interactionCreate", async (interaction) => {
       const lvl5Embed = {
         title: "Level 5 Raids",
         color: 0xffa500, // Orange
-        fields: raidData.currentList.lvl5.map((pokemon) => ({
-          name: pokemon.names.English,
-          value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
-          inline: true,
-        })),
+        fields: raidData.currentList.lvl5.map((pokemon) => {
+          // Get counter types for this Pokemon
+          const counterTypes = pokemon.counter ? 
+            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
+            [];
+          
+          // Shiny availability emoji
+          const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+          
+          return {
+            name: pokemon.names.English,
+            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
+              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
+            }\nShiny? ${shinyEmoji}`,
+            inline: true,
+          };
+        }),
         thumbnail: {
           url:
             raidData.currentList.lvl5[0]?.assets?.image ||
@@ -914,11 +942,23 @@ client.on("interactionCreate", async (interaction) => {
       const lvl3Embed = {
         title: "Level 3 Raids",
         color: 0x0000ff, // Blue
-        fields: raidData.currentList.lvl3.map((pokemon) => ({
-          name: pokemon.names.English,
-          value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
-          inline: true,
-        })),
+        fields: raidData.currentList.lvl3.map((pokemon) => {
+          // Get counter types for this Pokemon
+          const counterTypes = pokemon.counter ? 
+            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
+            [];
+          
+          // Shiny availability emoji
+          const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+          
+          return {
+            name: pokemon.names.English,
+            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
+              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
+            }\nShiny? ${shinyEmoji}`,
+            inline: true,
+          };
+        }),
         thumbnail: {
           url:
             raidData.currentList.lvl3[0]?.assets?.image ||
@@ -936,11 +976,23 @@ client.on("interactionCreate", async (interaction) => {
       const lvl1Embed = {
         title: "Level 1 Raids",
         color: 0x00ff00, // Green
-        fields: raidData.currentList.lvl1.map((pokemon) => ({
-          name: pokemon.names.English,
-          value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}`,
-          inline: true,
-        })),
+        fields: raidData.currentList.lvl1.map((pokemon) => {
+          // Get counter types for this Pokemon
+          const counterTypes = pokemon.counter ? 
+            Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a]) : 
+            [];
+          
+          // Shiny availability emoji
+          const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+          
+          return {
+            name: pokemon.names.English,
+            value: `Perfect IV CP: ${pokemon.cpRange[1]}\nPerfect IV CP (Weather Boosted): ${pokemon.cpRangeBoost[1]}${
+              counterTypes.length > 0 ? `\nWeak to: ${counterTypes.join(", ")}` : ""
+            }\nShiny? ${shinyEmoji}`,
+            inline: true,
+          };
+        }),
         thumbnail: {
           url:
             raidData.currentList.lvl1[0]?.assets?.image ||
