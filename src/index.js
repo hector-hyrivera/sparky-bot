@@ -684,10 +684,6 @@ client.on("interactionCreate", async (interaction) => {
 
     let response = `**${pokemon.names.English}**\n`;
 
-    // Shiny availability
-    const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-    response += `Shiny? ${shinyEmoji}\n`;
-
     // Form information
     if (pokemon.formId && pokemon.formId !== pokemon.id) {
       response += `Form: ${pokemon.formId.replace(/_/g, " ")}\n`;
