@@ -13,7 +13,7 @@
     "build": "wrangler deploy --dry-run --outdir=dist"
   },
   "dependencies": {
-    "discord-interactions": "^3.4.0"
+    "discord-interactions": "^4.3.0"
   },
   "devDependencies": {
     "dotenv": "^16.4.1",
