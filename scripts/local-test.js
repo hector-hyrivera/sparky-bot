@@ -33,7 +33,7 @@ const mockInteraction = (type, commandName = null, options = []) => {
 
 async function runTests() {
   // Start the worker
-  const worker = await unstable_dev('cloudflare-worker.js', {
+  const worker = await unstable_dev('../cloudflare-worker.js', {
     env: {
       PUBLIC_KEY: process.env.PUBLIC_KEY || 'mock-key'
     }

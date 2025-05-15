@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Go to project root
+cd "$(dirname "$0")/.."
+
 # Check if Wrangler is installed
 if ! command -v wrangler &> /dev/null; then
     echo "Wrangler not found. Installing..."

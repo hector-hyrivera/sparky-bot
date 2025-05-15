@@ -2,6 +2,9 @@
 
 # This script tests the deployment process in a way similar to CI/CD
 
+# Go to project root
+cd "$(dirname "$0")/.."
+
 echo "🚀 Testing deployment process..."
 
 # Clean up previous builds

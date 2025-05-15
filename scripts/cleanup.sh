@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Cleanup script for serverless folder
+# Cleanup script for the project
 # Removes unused files and temporary artifacts
 
-echo "🧹 Cleaning up serverless folder..."
+# Go to project root
+cd "$(dirname "$0")/.."
+
+echo "🧹 Cleaning up project folder..."
 
 # Remove AWS specific files
 rm -f serverless.yml 2>/dev/null
@@ -19,7 +22,7 @@ rm -rf .wrangler/ 2>/dev/null
 echo "✅ Removed build artifacts (if they existed)"
 
 # Fix permissions
-chmod +x deploy.sh
+chmod +x scripts/*.sh
 echo "✅ Fixed script permissions"
 
 echo "✨ Cleanup complete!"
