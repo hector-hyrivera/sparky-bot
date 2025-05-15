@@ -409,6 +409,75 @@ async function handleRaidBossCommand(options) {
   };
 }
 
+// Handle autocomplete for Pokemon command
+async function handlePokemonAutocomplete(focusedValue) {
+  if (!pokedexCache) {
+    pokedexCache = await getPokedex();
+  }
+  
+  if (!pokedexCache) {
+    return []; // Return empty if we couldn't get the pokedex
+  }
+
+  const searchValue = focusedValue.toLowerCase();
+  if (!searchValue) {
+    // Return a few popular ones if no search term
+    return pokedexCache
+      .filter(p => ["pikachu", "charizard", "mewtwo", "rayquaza", "tyranitar"].includes(p.names.English.toLowerCase()))
+      .slice(0, 25)
+      .map(p => ({
+        name: p.names.English,
+        value: p.names.English
+      }));
+  }
+
+  // Filter Pokemon by name
+  return pokedexCache
+    .filter(p => p.names.English.toLowerCase().includes(searchValue))
+    .slice(0, 25) // Discord only supports 25 choices
+    .map(p => ({
+      name: p.names.English,
+      value: p.names.English
+    }));
+}
+
+// Handle autocomplete for Hundo and Raidboss commands
+async function handleRaidBossAutocomplete(focusedValue) {
+  const raidData = await getRaidBosses();
+  
+  if (!raidData) {
+    return []; // Return empty if we couldn't get raid data
+  }
+
+  // Collect all raid bosses
+  const allRaids = [
+    ...(raidData.currentList.mega || []),
+    ...(raidData.currentList.lvl5 || []),
+    ...(raidData.currentList.lvl3 || []),
+    ...(raidData.currentList.lvl1 || []),
+  ];
+
+  const searchValue = focusedValue.toLowerCase();
+  if (!searchValue) {
+    // Return all if no search term
+    return allRaids
+      .slice(0, 25)
+      .map(p => ({
+        name: p.names.English,
+        value: p.names.English
+      }));
+  }
+
+  // Filter raid bosses by name
+  return allRaids
+    .filter(p => p.names.English.toLowerCase().includes(searchValue))
+    .slice(0, 25) // Discord only supports 25 choices
+    .map(p => ({
+      name: p.names.English,
+      value: p.names.English
+    }));
+}
+
 // Main worker handler
 export default {
   async fetch(request, env, ctx) {
@@ -457,6 +526,55 @@ export default {
           status: 200
         }
       );
+    }
+    
+    // Handle autocomplete interactions
+    if (body.type === 4) {
+      const { name } = body.data.command;
+      const { value } = body.data.options.find(option => option.focused) || { value: '' };
+      
+      let choices = [];
+      
+      try {
+        switch (name.toLowerCase()) {
+          case 'pokemon':
+            choices = await handlePokemonAutocomplete(value);
+            break;
+          case 'hundo':
+          case 'raidboss':
+            choices = await handleRaidBossAutocomplete(value);
+            break;
+          default:
+            choices = [];
+        }
+        
+        return new Response(
+          JSON.stringify({
+            type: 8, // APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
+            data: {
+              choices: choices
+            }
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200
+          }
+        );
+      } catch (error) {
+        console.error('Error handling autocomplete:', error);
+        return new Response(
+          JSON.stringify({
+            type: 8,
+            data: {
+              choices: []
+            }
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200
+          }
+        );
+      }
     }
     
     // Handle APPLICATION_COMMAND
