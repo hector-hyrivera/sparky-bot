@@ -443,35 +443,32 @@ async function handlePokemonAutocomplete(focusedValue) {
 
 // Handle autocomplete for RaidBoss and Hundo commands
 async function handleRaidBossAutocomplete(focusedValue) {
-  if (!pokedexCache) {
-    pokedexCache = await getPokedex();
-  }
+  // Get current raid bosses instead of using pokedex
+  const raidData = await getRaidBosses();
   
-  if (!pokedexCache) {
-    return []; // Return empty if we couldn't get the pokedex
+  if (!raidData) {
+    return []; // Return empty if we couldn't get the raid data
   }
 
-  // Set of common raid bosses
-  const commonRaidBosses = [
-    "Mewtwo", "Rayquaza", "Groudon", "Kyogre", "Dialga", 
-    "Palkia", "Giratina", "Reshiram", "Zekrom", "Kyurem", 
-    "Xerneas", "Yveltal", "Zacian", "Zamazenta", "Eternatus"
+  // Collect all current raid bosses from different tiers
+  const allRaids = [
+    ...(raidData.currentList.mega || []),
+    ...(raidData.currentList.lvl5 || []),
+    ...(raidData.currentList.lvl3 || []),
+    ...(raidData.currentList.lvl1 || []),
   ];
   
   const searchValue = focusedValue.toLowerCase();
   if (!searchValue) {
-    // Return common raid bosses if no search term
-    return pokedexCache
-      .filter(p => commonRaidBosses.includes(p.names.English))
-      .slice(0, 25)
-      .map(p => ({
-        name: p.names.English,
-        value: p.names.English
-      }));
+    // Return all current raid bosses if no search term (up to 25)
+    return allRaids.slice(0, 25).map(p => ({
+      name: p.names.English,
+      value: p.names.English
+    }));
   }
 
-  // Filter Pokemon by name
-  return pokedexCache
+  // Filter raid bosses by name
+  return allRaids
     .filter(p => p.names.English.toLowerCase().includes(searchValue))
     .slice(0, 25)
     .map(p => ({
