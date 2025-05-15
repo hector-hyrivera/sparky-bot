@@ -13,5 +13,5 @@ export const info = {
   name: 'sparky-bot',
   description: 'A serverless Pokemon GO Discord bot using Cloudflare Workers',
   version: '1.0.0',
-  author: 'Sparky Bot Team'
+  author: 'Hector Rivera'
 }; 
