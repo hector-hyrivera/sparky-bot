@@ -20,6 +20,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Display Wrangler version
+      run: npx wrangler --version
+      
     - name: Create .env file
       run: |
         cp env.example .env
