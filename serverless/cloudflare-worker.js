@@ -434,33 +434,35 @@ async function handlePokemonAutocomplete(focusedValue) {
   // Filter Pokemon by name
   return pokedexCache
     .filter(p => p.names.English.toLowerCase().includes(searchValue))
-    .slice(0, 25) // Discord only supports 25 choices
+    .slice(0, 25)
     .map(p => ({
       name: p.names.English,
       value: p.names.English
     }));
 }
 
-// Handle autocomplete for Hundo and Raidboss commands
+// Handle autocomplete for RaidBoss and Hundo commands
 async function handleRaidBossAutocomplete(focusedValue) {
-  const raidData = await getRaidBosses();
+  if (!pokedexCache) {
+    pokedexCache = await getPokedex();
+  }
   
-  if (!raidData) {
-    return []; // Return empty if we couldn't get raid data
+  if (!pokedexCache) {
+    return []; // Return empty if we couldn't get the pokedex
   }
 
-  // Collect all raid bosses
-  const allRaids = [
-    ...(raidData.currentList.mega || []),
-    ...(raidData.currentList.lvl5 || []),
-    ...(raidData.currentList.lvl3 || []),
-    ...(raidData.currentList.lvl1 || []),
+  // Set of common raid bosses
+  const commonRaidBosses = [
+    "Mewtwo", "Rayquaza", "Groudon", "Kyogre", "Dialga", 
+    "Palkia", "Giratina", "Reshiram", "Zekrom", "Kyurem", 
+    "Xerneas", "Yveltal", "Zacian", "Zamazenta", "Eternatus"
   ];
-
+  
   const searchValue = focusedValue.toLowerCase();
   if (!searchValue) {
-    // Return all if no search term
-    return allRaids
+    // Return common raid bosses if no search term
+    return pokedexCache
+      .filter(p => commonRaidBosses.includes(p.names.English))
       .slice(0, 25)
       .map(p => ({
         name: p.names.English,
@@ -468,10 +470,10 @@ async function handleRaidBossAutocomplete(focusedValue) {
       }));
   }
 
-  // Filter raid bosses by name
-  return allRaids
+  // Filter Pokemon by name
+  return pokedexCache
     .filter(p => p.names.English.toLowerCase().includes(searchValue))
-    .slice(0, 25) // Discord only supports 25 choices
+    .slice(0, 25)
     .map(p => ({
       name: p.names.English,
       value: p.names.English
@@ -528,21 +530,45 @@ export default {
       );
     }
     
+    // Log all interaction types to debug
+    console.log(`Received interaction type: ${body.type}`);
+    
     // Handle autocomplete interactions
     if (body.type === 4) {
-      const { name } = body.data.command;
-      const { value } = body.data.options.find(option => option.focused) || { value: '' };
+      console.log('Autocomplete interaction received:', JSON.stringify(body));
       
-      let choices = [];
+      // Try to extract command name and focused value safely
+      let commandName = '';
+      let focusedValue = '';
       
       try {
-        switch (name.toLowerCase()) {
+        if (body.data && body.data.name) {
+          commandName = body.data.name;
+        } else if (body.data && body.data.command && body.data.command.name) {
+          commandName = body.data.command.name;
+        }
+        
+        if (body.data && body.data.options && Array.isArray(body.data.options)) {
+          const focusedOption = body.data.options.find(opt => opt.focused);
+          if (focusedOption) {
+            focusedValue = focusedOption.value || '';
+          }
+        }
+        
+        console.log(`Command: ${commandName}, Focused value: ${focusedValue}`);
+        
+        let choices = [];
+        
+        switch (commandName.toLowerCase()) {
           case 'pokemon':
-            choices = await handlePokemonAutocomplete(value);
+            choices = await handlePokemonAutocomplete(focusedValue);
             break;
           case 'hundo':
+            // For 'hundo' command, we need to check for the "pokemon" parameter
+            choices = await handleRaidBossAutocomplete(focusedValue);
+            break;
           case 'raidboss':
-            choices = await handleRaidBossAutocomplete(value);
+            choices = await handleRaidBossAutocomplete(focusedValue);
             break;
           default:
             choices = [];
@@ -562,6 +588,7 @@ export default {
         );
       } catch (error) {
         console.error('Error handling autocomplete:', error);
+        console.error('Body structure:', JSON.stringify(body, null, 2));
         return new Response(
           JSON.stringify({
             type: 8,
