@@ -55,9 +55,9 @@ jobs:
             }
             console.log('✅ Wrangler config exists');
             
-            // Basic validation of worker file
+            // Basic validation of worker file - check for the Cloudflare worker's export format
             const workerContent = fs.readFileSync(workerPath, 'utf8');
-            if (!workerContent.includes('addEventListener') || !workerContent.includes('fetch')) {
+            if (!workerContent.includes('export default') || !workerContent.includes('async fetch(')) {
               throw new Error('Worker file appears to be missing core functionality');
             }
             console.log('✅ Worker file contains basic required code');
