@@ -1,0 +1,7 @@
+{
+  "name": "sparky-bot",
+  "compatibility_date": "2024-09-23",
+  "main": "cloudflare-worker.js",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {}
+} 

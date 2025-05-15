@@ -9,7 +9,8 @@
     "deploy": "wrangler deploy",
     "register": "node register-commands.js",
     "start": "wrangler dev",
-    "test": "node local-test.js"
+    "test": "node local-test.js",
+    "build": "wrangler deploy --dry-run --outdir=dist"
   },
   "dependencies": {
     "discord-interactions": "^3.4.0"

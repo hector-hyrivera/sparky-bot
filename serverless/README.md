@@ -70,6 +70,43 @@ This is a serverless version of Sparky Bot, a Discord bot for Pokémon GO raid i
    1. Remove GUILD_ID from your .env file
    2. Run `npm run register`
 
+## CI/CD Setup
+
+This repository includes GitHub Actions workflow for automatic deployment:
+
+1. **Set up GitHub Secrets**:
+   - `CF_API_TOKEN`: Your Cloudflare API token with Workers access
+   - `CLIENT_ID`: Your Discord application client ID
+   - `DISCORD_TOKEN`: Your Discord bot token
+   - `PUBLIC_KEY`: Your Discord application public key
+
+2. **Enable GitHub Actions**:
+   The workflow will automatically deploy when you push to the main branch.
+
+3. **Test your deployment process**:
+   You can run the included deployment test script locally to verify everything works:
+   ```
+   ./deploy-test.sh
+   ```
+
+## Troubleshooting CI/CD Issues
+
+If you encounter issues with the CI/CD pipeline:
+
+1. **Check Node.js version**: Make sure your local and CI environments use compatible Node.js versions.
+
+2. **Verify wrangler configuration**: Both wrangler.toml and wrangler.jsonc are provided for maximum compatibility.
+
+3. **Dependency issues**: If you encounter dependency problems:
+   ```
+   npm ci && npm run build
+   ```
+   
+4. **Manual deployment**: If CI fails but local works, use:
+   ```
+   npm run deploy
+   ```
+
 ## Testing
 
 To test the bot locally without connecting to Discord:
