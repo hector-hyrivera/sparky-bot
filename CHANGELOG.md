@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0]
+
+### Added
+- Major refactor for serverless.
+
 ## [1.2.0]
 
 ### Added
