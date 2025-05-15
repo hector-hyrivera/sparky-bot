@@ -1,0 +1,22 @@
+{
+  "name": "sparky-bot-serverless",
+  "version": "1.0.0",
+  "description": "A serverless Pokemon GO Discord bot for raid information",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "register": "node register-commands.js",
+    "start": "wrangler dev",
+    "test": "node local-test.js"
+  },
+  "dependencies": {
+    "discord-interactions": "^3.4.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.1",
+    "node-fetch": "^3.3.0",
+    "wrangler": "^3.24.0"
+  }
+} 
