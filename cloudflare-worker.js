@@ -2,6 +2,8 @@ import { verifyKey } from 'discord-interactions';
 
 // Cache for Pokedex data (only valid for function instance lifetime)
 let pokedexCache = null;
+let researchCache = null;  // Add cache for research data
+let eggCache = null;  // Add cache for egg data
 
 // Fetch full Pokedex data
 async function getPokedex() {
@@ -16,6 +18,67 @@ async function getPokedex() {
   } catch (error) {
     console.error("Error fetching Pokedex:", error);
     return null;
+  }
+}
+
+// Fetch research data
+async function getResearchData() {
+  try {
+    // Return cached data if available
+    if (researchCache) {
+      return researchCache;
+    }
+    
+    const response = await fetch(
+      "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/research.json"
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch research data");
+    }
+    
+    researchCache = await response.json();
+    return researchCache;
+  } catch (error) {
+    console.error("Error fetching research data:", error);
+    return [];
+  }
+}
+
+// Fetch egg data
+async function getEggData() {
+  try {
+    // Return cached data if available
+    if (eggCache) {
+      return eggCache;
+    }
+    
+    console.log("Fetching egg Data from Leek Duck (via ScrapedDuck)...");
+    const response = await fetch(
+      "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/eggs.json"
+    );
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch egg data: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch egg data: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Successfully fetched egg data: ${data.length} entries found`);
+    
+    // Validate data structure
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error("Egg data is not in expected format (array expected)");
+      return [];
+    }
+    
+    // Sample log of the first entry to verify structure
+    console.log("Sample egg data entry:", JSON.stringify(data[0]));
+    
+    eggCache = data;
+    return eggCache;
+  } catch (error) {
+    console.error("Error fetching egg data:", error);
+    return [];
   }
 }
 
@@ -409,6 +472,191 @@ async function handleRaidBossCommand(options) {
   };
 }
 
+// Handle Research command
+async function handleResearchCommand(options) {
+  const researchTask = options.find(opt => opt.name === "task").value;
+  const researchData = await getResearchData();
+  
+  if (!researchData || researchData.length === 0) {
+    return {
+      content: "Sorry, I couldn't fetch the research data at the moment."
+    };
+  }
+
+  // Find the exact research task
+  const task = researchData.find(t => t.text === researchTask);
+  
+  if (!task) {
+    return {
+      content: `Couldn't find research task: "${researchTask}"`
+    };
+  }
+
+  // Create an embed with the research details
+  const embed = {
+    title: "Research Task",
+    description: task.text,
+    color: 0x3498db, // Blue color
+    fields: [],
+    footer: {
+      text: "Data from Leek Duck (via ScrapedDuck)"
+    }
+  };
+
+  // Handle rewards (which is an array in the API)
+  if (task.rewards && Array.isArray(task.rewards) && task.rewards.length > 0) {
+    // Create a rewards field that displays all possible rewards
+    const rewardsText = task.rewards.map(reward => {
+      let text = `**${reward.name}**`;
+      
+      // Add CP range if available
+      if (reward.combatPower) {
+        text += ` (CP: ${reward.combatPower.min}-${reward.combatPower.max})`;
+      }
+      
+      // Add shiny info if available
+      if (reward.canBeShiny) {
+        text += " ✨";
+      }
+      
+      return text;
+    }).join('\n');
+    
+    embed.fields.push({
+      name: "Possible Rewards",
+      value: rewardsText || "Unknown rewards",
+      inline: false
+    });
+    
+    // If there's an image for the first reward, add it
+    if (task.rewards[0]?.image) {
+      embed.thumbnail = {
+        url: task.rewards[0].image
+      };
+    }
+  } else {
+    embed.fields.push({
+      name: "Rewards",
+      value: "No reward information available",
+      inline: false
+    });
+  }
+
+  // Add other fields if they exist
+  if (task.type) {
+    embed.fields.push({
+      name: "Type",
+      value: task.type,
+      inline: true
+    });
+  }
+
+  if (task.category) {
+    embed.fields.push({
+      name: "Category",
+      value: task.category,
+      inline: true
+    });
+  }
+
+  return {
+    embeds: [embed]
+  };
+}
+
+// Handle egg command
+async function handleEggCommand(options) {
+  try {
+    const eggType = options.find(opt => opt.name === "type").value;
+    const data = await getEggData();
+    
+    if (!data || !Array.isArray(data)) {
+      return {
+        content: "Sorry, I couldn't fetch egg data at this time."
+      };
+    }
+    
+    // Filter Pokémon that match the selected egg type
+    const pokemonInEgg = data.filter(p => p.eggType.toLowerCase() === eggType.toLowerCase());
+    
+    if (pokemonInEgg.length === 0) {
+      return {
+        content: `Sorry, I couldn't find information for "${eggType}" eggs.`
+      };
+    }
+    
+    // Create an embed with egg information
+    const embed = {
+      title: `${eggType} Eggs`,
+      color: 0x00BFFF, // DeepSkyBlue
+      description: `Here are Pokémon that can hatch from ${eggType} eggs:`,
+      fields: [],
+      footer: {
+        text: "Data from Leek Duck (via ScrapedDuck)"
+      }
+    };
+    
+    // Group Pokémon by shininess
+    const shinyPokemon = pokemonInEgg.filter(p => p.canBeShiny);
+    const nonShinyPokemon = pokemonInEgg.filter(p => !p.canBeShiny);
+    
+    // Add fields for Pokémon that can be shiny
+    if (shinyPokemon.length > 0) {
+      const shinyNames = shinyPokemon.map(p => `${p.name} ✨`).join(", ");
+      embed.fields.push({
+        name: "Can be Shiny",
+        value: shinyNames,
+        inline: false
+      });
+    }
+    
+    // Add fields for Pokémon that cannot be shiny
+    if (nonShinyPokemon.length > 0) {
+      const nonShinyNames = nonShinyPokemon.map(p => p.name).join(", ");
+      embed.fields.push({
+        name: "Cannot be Shiny",
+        value: nonShinyNames,
+        inline: false
+      });
+    }
+    
+    // Add special notes about the eggs (Adventure Sync, Regional, etc.)
+    const adventureSyncPokemon = pokemonInEgg.filter(p => p.isAdventureSync);
+    if (adventureSyncPokemon.length > 0) {
+      embed.fields.push({
+        name: "Adventure Sync Exclusive",
+        value: adventureSyncPokemon.map(p => p.name).join(", "),
+        inline: false
+      });
+    }
+    
+    const regionalPokemon = pokemonInEgg.filter(p => p.isRegional);
+    if (regionalPokemon.length > 0) {
+      embed.fields.push({
+        name: "Regional Exclusive",
+        value: regionalPokemon.map(p => p.name).join(", "),
+        inline: false
+      });
+    }
+    
+    // Add thumbnail if we have a sample Pokémon with an image
+    if (pokemonInEgg[0]?.image) {
+      embed.thumbnail = {
+        url: pokemonInEgg[0].image
+      };
+    }
+    
+    return {
+      embeds: [embed]
+    };
+  } catch (error) {
+    console.error("Error handling egg command:", error);
+    return {
+      content: "Sorry, an error occurred while processing your request."
+    };
+  }
+}
+
 // Handle autocomplete for Pokemon command
 async function handlePokemonAutocomplete(focusedValue) {
   if (!pokedexCache) {
@@ -475,6 +723,61 @@ async function handleRaidBossAutocomplete(focusedValue) {
       name: p.names.English,
       value: p.names.English
     }));
+}
+
+// Handle research autocomplete
+async function handleResearchAutocomplete(focusedValue) {
+  const researchData = await getResearchData();
+  
+  if (!researchData || researchData.length === 0) {
+    return [];
+  }
+  
+  const searchValue = focusedValue.toLowerCase();
+  if (!searchValue) {
+    // Return first 25 research tasks if no search term
+    return researchData.slice(0, 25).map(task => ({
+      name: task.text.length > 100 ? task.text.substring(0, 97) + '...' : task.text,
+      value: task.text
+    }));
+  }
+
+  // Filter research tasks by text
+  return researchData
+    .filter(task => task.text.toLowerCase().includes(searchValue))
+    .slice(0, 25)
+    .map(task => ({
+      name: task.text.length > 100 ? task.text.substring(0, 97) + '...' : task.text,
+      value: task.text
+    }));
+}
+
+// Handle autocomplete for egg command
+async function handleEggAutocomplete(focusedValue) {
+  try {
+    const data = await getEggData();
+    if (!data || !Array.isArray(data)) {
+      console.error("Invalid egg data structure");
+      return [];
+    }
+
+    // Create a list of unique egg types
+    const eggTypes = [...new Set(data.map(egg => egg.eggType))];
+    
+    // Filter egg types that match user input
+    const filteredTypes = eggTypes.filter(type => 
+      type.toLowerCase().includes(focusedValue.toLowerCase())
+    ).slice(0, 25); // Limit to 25 results (Discord limit)
+    
+    // Format for Discord's autocomplete
+    return filteredTypes.map(type => ({
+      name: type,
+      value: type
+    }));
+  } catch (error) {
+    console.error("Error in egg autocomplete:", error);
+    return [];
+  }
 }
 
 // Main worker handler
@@ -567,6 +870,12 @@ export default {
           case 'raidboss':
             choices = await handleRaidBossAutocomplete(focusedValue);
             break;
+          case 'research':
+            choices = await handleResearchAutocomplete(focusedValue);
+            break;
+          case 'egg':
+            choices = await handleEggAutocomplete(focusedValue);
+            break;
           default:
             choices = [];
         }
@@ -622,6 +931,12 @@ export default {
           case 'raidboss':
             responseData = await handleRaidBossCommand(options);
             break;
+          case 'research':
+            responseData = await handleResearchCommand(options);
+            break;
+          case 'egg':
+            responseData = await handleEggCommand(options);
+            break;
           default:
             responseData = { content: "Unknown command" };
         }
@@ -665,4 +980,4 @@ export default {
       }
     );
   }
-}; 
+};

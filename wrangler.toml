@@ -3,10 +3,6 @@ compatibility_date = "2024-09-23"
 main = "cloudflare-worker.js"
 compatibility_flags = ["nodejs_compat"]
 
-routes = [
-  { pattern = "sparky-bot.hyrivera.com", custom_domain = true }
-]
-
 # Bind environment variables
 [vars]
 # CLIENT_ID, DISCORD_TOKEN, and PUBLIC_KEY will be set in the Cloudflare dashboard

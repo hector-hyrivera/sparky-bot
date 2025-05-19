@@ -6,6 +6,19 @@ dotenv.config();
 // Command definitions
 const commands = [
   {
+    name: "egg",
+    description: "Get information about a specific egg type",
+    options: [
+      {
+        name: "type",
+        description: "The type of egg to look up",
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      }
+    ]
+  },
+  {
     name: "hundo",
     description: "Get the perfect IV CP for a raid boss",
     options: [
@@ -42,6 +55,19 @@ const commands = [
       {
         name: "name",
         description: "The name of the raid boss",
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      }
+    ]
+  },
+  {
+    name: "research",
+    description: "Get information about a research task and its rewards",
+    options: [
+      {
+        name: "task",
+        description: "The research task to look up",
         type: 3, // STRING
         required: true,
         autocomplete: true
@@ -113,4 +139,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error('Failed to register commands:', err);
       process.exit(1);
     });
-} 
+}
