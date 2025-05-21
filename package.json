@@ -1,6 +1,6 @@
 {
   "name": "sparky-bot",
-  "version": "1.0.0",
+  "version": "1.2.2",
   "description": "A Pokemon GO Discord bot for raid information",
   "main": "index.js",
   "type": "module",
@@ -28,4 +28,4 @@
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   }
-} 
+}
