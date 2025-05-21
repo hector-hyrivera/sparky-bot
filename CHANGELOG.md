@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4]
+
+### Chore
+
+- Update versioning logic
+
 ## [1.2.1]
 
 ### Features and Improvements
