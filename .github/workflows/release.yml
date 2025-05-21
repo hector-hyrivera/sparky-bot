@@ -3,9 +3,9 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+' # Major.Minor.Patch
-      - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+' # Beta releases
-      - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+' # Release candidates
+      - '[0-9]+.[0-9]+.[0-9]+' # Major.Minor.Patch
+      - '[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+' # Beta releases
+      - '[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+' # Release candidates
 
 jobs:
   release:
