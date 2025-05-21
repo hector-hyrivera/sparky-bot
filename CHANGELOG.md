@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.4.0]
+## [1.2.1]
 
 ### Features and Improvements
 
@@ -14,13 +14,13 @@ All notable changes to this project will be documented in this file.
 - Upgraded discord-interactions from 3.4.0 to 4.3.0
 - Upgraded wrangler from 4.15.1 to 4.15.2
 
-## [1.3.0]
+## [1.2.0]
 
 ### Added
 
 - Major refactor for serverless.
 
-## [1.2.0]
+## [1.1.1]
 
 ### Added
 
