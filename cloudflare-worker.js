@@ -568,7 +568,7 @@ const AutocompleteHandlers = {
       .map(p => ({ name: p.names.English, value: p.names.English }));
   },
 
-  async raidBoss(focusedValue) {
+  async raidboss(focusedValue) {
     const raidData = await getRaidBosses();
     if (!raidData) return [];
 
@@ -585,6 +585,11 @@ const AutocompleteHandlers = {
       .filter(p => p.names.English.toLowerCase().includes(searchValue))
       .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
       .map(p => ({ name: p.names.English, value: p.names.English }));
+  },
+
+  async hundo(focusedValue) {
+    // Hundo uses the same logic as raidboss since it's for raid bosses
+    return this.raidboss(focusedValue);
   },
 
   async research(focusedValue) {
@@ -689,8 +694,6 @@ export default {
         
         if (handler) {
           choices = await handler(focusedValue);
-        } else if (commandName.toLowerCase() === 'hundo') {
-          choices = await AutocompleteHandlers.raidBoss(focusedValue);
         }
         
         return new Response(
