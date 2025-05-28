@@ -1,784 +1,628 @@
 import { verifyKey } from 'discord-interactions';
 
-// Cache for Pokedex data (only valid for function instance lifetime)
-let pokedexCache = null;
-let researchCache = null;  // Add cache for research data
-let eggCache = null;  // Add cache for egg data
+// Configuration constants
+const CONFIG = {
+  COLORS: {
+    GREEN: 0x00ff00,
+    RED: 0xff0000,
+    ORANGE: 0xffa500,
+    BLUE: 0x0000ff,
+    DEEP_SKY_BLUE: 0x00BFFF,
+    DISCORD_BLUE: 0x3498db
+  },
+  LIMITS: {
+    AUTOCOMPLETE_RESULTS: 25,
+    POPULAR_POKEMON: ["pikachu", "charizard", "mewtwo", "rayquaza", "tyranitar"]
+  },
+  URLS: {
+    POKEDEX: "https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json",
+    RAID_BOSSES: "https://pokemon-go-api.github.io/pokemon-go-api/api/raidboss.json",
+    RESEARCH: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/research.json",
+    EGGS: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/eggs.json",
+    DEFAULT_IMAGE: "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
+  },
+  FOOTERS: {
+    POKEMON_GO_API: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
+    LEEK_DUCK: "Data from Leek Duck (via ScrapedDuck)"
+  },
+  CACHE_TTL: 5 * 60 * 1000 // 5 minutes in milliseconds
+};
+
+// Enhanced cache management with TTL
+class CacheManager {
+  constructor() {
+    this.cache = new Map();
+  }
+
+  set(key, value, ttl = CONFIG.CACHE_TTL) {
+    const expiry = Date.now() + ttl;
+    this.cache.set(key, { value, expiry });
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.value;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+const cache = new CacheManager();
+
+// Standardized API response handler
+async function fetchWithValidation(url, validator = null) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (validator && !validator(data)) {
+      throw new Error("Invalid data structure received");
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error(`Error fetching ${url}:`, error);
+    return { success: false, error: error.message, data: null };
+  }
+}
 
 // Fetch full Pokedex data
 async function getPokedex() {
-  try {
-    const response = await fetch(
-      "https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json"
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch Pokedex data");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching Pokedex:", error);
-    return null;
+  const cached = cache.get('pokedex');
+  if (cached) return cached;
+
+  const result = await fetchWithValidation(
+    CONFIG.URLS.POKEDEX,
+    data => Array.isArray(data) && data.length > 0
+  );
+  
+  if (result.success) {
+    cache.set('pokedex', result.data);
+    return result.data;
   }
+  
+  return null;
 }
 
 // Fetch research data
 async function getResearchData() {
-  try {
-    // Return cached data if available
-    if (researchCache) {
-      return researchCache;
-    }
-    
-    const response = await fetch(
-      "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/research.json"
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch research data");
-    }
-    
-    researchCache = await response.json();
-    return researchCache;
-  } catch (error) {
-    console.error("Error fetching research data:", error);
-    return [];
+  const cached = cache.get('research');
+  if (cached) return cached;
+
+  const result = await fetchWithValidation(
+    CONFIG.URLS.RESEARCH,
+    data => Array.isArray(data)
+  );
+  
+  if (result.success) {
+    cache.set('research', result.data);
+    return result.data;
   }
+  
+  return [];
 }
 
 // Fetch egg data
 async function getEggData() {
-  try {
-    // Return cached data if available
-    if (eggCache) {
-      return eggCache;
-    }
-    
-    console.log("Fetching egg Data from Leek Duck (via ScrapedDuck)...");
-    const response = await fetch(
-      "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/eggs.json"
-    );
-    
-    if (!response.ok) {
-      console.error(`Failed to fetch egg data: ${response.status} ${response.statusText}`);
-      throw new Error(`Failed to fetch egg data: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log(`Successfully fetched egg data: ${data.length} entries found`);
-    
-    // Validate data structure
-    if (!Array.isArray(data) || data.length === 0) {
-      console.error("Egg data is not in expected format (array expected)");
-      return [];
-    }
-    
-    // Sample log of the first entry to verify structure
-    console.log("Sample egg data entry:", JSON.stringify(data[0]));
-    
-    eggCache = data;
-    return eggCache;
-  } catch (error) {
-    console.error("Error fetching egg data:", error);
-    return [];
+  const cached = cache.get('eggs');
+  if (cached) return cached;
+
+  console.log("Fetching egg data from Leek Duck (via ScrapedDuck)...");
+  const result = await fetchWithValidation(
+    CONFIG.URLS.EGGS,
+    data => Array.isArray(data) && data.length > 0
+  );
+  
+  if (result.success) {
+    console.log(`Successfully fetched egg data: ${result.data.length} entries found`);
+    console.log("Sample egg data entry:", JSON.stringify(result.data[0]));
+    cache.set('eggs', result.data);
+    return result.data;
   }
+  
+  console.error("Failed to fetch valid egg data");
+  return [];
 }
 
 // Fetch raid boss data
 async function getRaidBosses() {
-  try {
-    const response = await fetch(
-      "https://pokemon-go-api.github.io/pokemon-go-api/api/raidboss.json"
-    );
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching raid bosses:", error);
-    return null;
+  const cached = cache.get('raidBosses');
+  if (cached) return cached;
+
+  const result = await fetchWithValidation(
+    CONFIG.URLS.RAID_BOSSES,
+    data => data && typeof data === 'object' && data.currentList
+  );
+  
+  if (result.success) {
+    cache.set('raidBosses', result.data);
+    return result.data;
   }
+  
+  return null;
 }
 
-// Find Pokemon by name (including forms)
-async function findPokemon(name) {
-  const pokedex = await getPokedex();
+// Utility functions for embed creation
+const EmbedUtils = {
+  createBaseEmbed(title, color, description = null) {
+    return {
+      title,
+      color,
+      ...(description && { description }),
+      fields: [],
+      footer: { text: CONFIG.FOOTERS.POKEMON_GO_API }
+    };
+  },
+
+  addField(embed, name, value, inline = false) {
+    embed.fields.push({ name, value, inline });
+    return embed;
+  },
+
+  setImage(embed, url) {
+    embed.image = { url: url || CONFIG.URLS.DEFAULT_IMAGE };
+    return embed;
+  },
+
+  setThumbnail(embed, url) {
+    embed.thumbnail = { url: url || CONFIG.URLS.DEFAULT_IMAGE };
+    return embed;
+  },
+
+  setFooter(embed, text) {
+    embed.footer = { text };
+    return embed;
+  },
+
+  createRaidPokemonField(pokemon) {
+    const counterTypes = pokemon.counter
+      ? Object.keys(pokemon.counter).sort((a, b) => pokemon.counter[b] - pokemon.counter[a])
+      : [];
+    
+    const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
+    
+    let value = `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**`;
+    
+    if (counterTypes.length > 0) {
+      value += `\n⚔️ Weak to: ${counterTypes.join(", ")}`;
+    }
+    
+    value += `\n✨ Shiny? ${shinyEmoji}`;
+    
+    return {
+      name: pokemon.names.English,
+      value,
+      inline: true
+    };
+  }
+};
+
+// Optimized Pokemon search with fuzzy matching
+function findPokemon(pokedex, name) {
   if (!pokedex) return null;
 
   const searchName = name.toLowerCase();
   console.log(`Searching for Pokemon: ${searchName}`);
 
-  // This is a simplified version; we're only doing basic search
-  return pokedex.find((p) => {
+  // Exact match first
+  let pokemon = pokedex.find(p => {
     const baseName = p.names.English.toLowerCase();
     const formName = p.formId ? p.formId.toLowerCase() : "";
     return baseName === searchName || formName === searchName;
   });
+
+  // Fuzzy match if no exact match
+  if (!pokemon) {
+    pokemon = pokedex.find(p => {
+      const baseName = p.names.English.toLowerCase();
+      const formName = p.formId ? p.formId.toLowerCase() : "";
+      return baseName.includes(searchName) || formName.includes(searchName);
+    });
+  }
+
+  return pokemon;
+}
+
+// Optimized raid collection
+function getAllRaids(raidData) {
+  if (!raidData?.currentList) return [];
+  
+  return [
+    ...(raidData.currentList.mega || []),
+    ...(raidData.currentList.lvl5 || []),
+    ...(raidData.currentList.lvl3 || []),
+    ...(raidData.currentList.lvl1 || [])
+  ];
 }
 
 // Handle Pokemon info command
 async function handlePokemonCommand(options) {
-  const pokemonName = options.find(opt => opt.name === "name").value;
-  const pokemon = await findPokemon(pokemonName);
+  const pokemonName = options.find(opt => opt.name === "name")?.value;
+  if (!pokemonName) {
+    return { content: "Pokemon name is required." };
+  }
+
+  const pokedex = await getPokedex();
+  const pokemon = findPokemon(pokedex, pokemonName);
   
   if (!pokemon) {
-    return {
-      content: `Sorry, I couldn't find information for ${pokemonName}.`
-    };
+    return { content: `Sorry, I couldn't find information for ${pokemonName}.` };
   }
 
-  let response = `**${pokemon.names.English}**\n`;
-
-  // Form information
-  if (pokemon.formId && pokemon.formId !== pokemon.id) {
-    response += `🔄 **Form**: ${pokemon.formId.replace(/_/g, " ")}\n`;
-  }
-
-  // Types
+  // Build types array
   const types = [pokemon.primaryType.names.English];
   if (pokemon.secondaryType) {
     types.push(pokemon.secondaryType.names.English);
   }
-  response += `🏷️ **Type**: ${types.join(", ")}\n`;
 
-  // Stats
-  response += `\n📊 **Base Stats**:\n`;
-  response += `❤️ **Stamina**: ${pokemon.stats.stamina}\n`;
-  response += `⚔️ **Attack**: ${pokemon.stats.attack}\n`;
-  response += `🛡️ **Defense**: ${pokemon.stats.defense}\n`;
+  // Build description
+  let description = `**${pokemon.names.English}**\n`;
+  
+  if (pokemon.formId && pokemon.formId !== pokemon.id) {
+    description += `🔄 **Form**: ${pokemon.formId.replace(/_/g, " ")}\n`;
+  }
+  
+  description += `🏷️ **Type**: ${types.join(", ")}\n`;
+  description += `\n📊 **Base Stats**:\n`;
+  description += `❤️ **Stamina**: ${pokemon.stats.stamina}\n`;
+  description += `⚔️ **Attack**: ${pokemon.stats.attack}\n`;
+  description += `🛡️ **Defense**: ${pokemon.stats.defense}\n`;
 
-  // Create embed with Pokemon image
-  const embed = {
-    title: pokemon.names.English,
-    description: response,
-    color: 0x00ff00, // Green color
-    image: {
-      url:
-        pokemon.assets?.image ||
-        "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-    },
-    footer: {
-      text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-    },
-  };
+  const embed = EmbedUtils.createBaseEmbed(pokemon.names.English, CONFIG.COLORS.GREEN, description);
+  EmbedUtils.setImage(embed, pokemon.assets?.image);
 
-  return {
-    embeds: [embed]
-  };
+  return { embeds: [embed] };
 }
 
 // Handle Hundo command
 async function handleHundoCommand(options) {
-  const pokemonName = options.find(opt => opt.name === "pokemon").value.toLowerCase();
-  const raidData = await getRaidBosses();
-
-  if (!raidData) {
-    return {
-      content: "Sorry, I couldn't fetch the raid data at the moment."
-    };
+  const pokemonName = options.find(opt => opt.name === "pokemon")?.value?.toLowerCase();
+  if (!pokemonName) {
+    return { content: "Pokemon name is required." };
   }
 
-  // Search through all raid levels
-  const allRaids = [
-    ...(raidData.currentList.mega || []),
-    ...(raidData.currentList.lvl5 || []),
-    ...(raidData.currentList.lvl3 || []),
-    ...(raidData.currentList.lvl1 || []),
-  ];
+  const raidData = await getRaidBosses();
+  if (!raidData) {
+    return { content: "Sorry, I couldn't fetch the raid data at the moment." };
+  }
 
-  const pokemon = allRaids.find(
-    (p) => p.names.English.toLowerCase() === pokemonName
-  );
+  const allRaids = getAllRaids(raidData);
+  const pokemon = allRaids.find(p => p.names.English.toLowerCase() === pokemonName);
 
   if (!pokemon) {
-    return {
-      content: `Couldn't find ${pokemonName} in the current raid bosses.`
-    };
+    return { content: `Couldn't find ${pokemonName} in the current raid bosses.` };
   }
 
-  const perfectCP = pokemon.cpRange[1];
-  const perfectCPBoosted = pokemon.cpRangeBoost[1];
+  const embed = EmbedUtils.createBaseEmbed(
+    `🏆 Perfect IV CP for ${pokemon.names.English}`,
+    CONFIG.COLORS.GREEN
+  );
+  
+  EmbedUtils.addField(embed, "🎯 Normal CP", `**${pokemon.cpRange[1]}**`, true);
+  EmbedUtils.addField(embed, "☀️ Weather Boosted CP", `**${pokemon.cpRangeBoost[1]}**`, true);
+  EmbedUtils.setImage(embed, pokemon.assets?.image);
 
-  const embed = {
-    title: `🏆 Perfect IV CP for ${pokemon.names.English}`,
-    color: 0x00ff00, // Green color
-    fields: [
-      {
-        name: "🎯 Normal CP",
-        value: `**${perfectCP}**`,
-        inline: true,
-      },
-      {
-        name: "☀️ Weather Boosted CP",
-        value: `**${perfectCPBoosted}**`,
-        inline: true,
-      },
-    ],
-    image: {
-      url:
-        pokemon.assets?.image ||
-        "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-    },
-    footer: {
-      text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-    },
-  };
-
-  return {
-    embeds: [embed]
-  };
+  return { embeds: [embed] };
 }
 
-// Handle Current Raids command
+// Handle Current Raids command with optimized embed creation
 async function handleCurrentRaidsCommand() {
   const raidData = await getRaidBosses();
-
   if (!raidData) {
-    return {
-      content: "Sorry, I couldn't fetch the raid data at the moment."
-    };
+    return { content: "Sorry, I couldn't fetch the raid data at the moment." };
   }
 
-  // Create embeds for each raid tier
   const embeds = [];
+  const raidTiers = [
+    { key: 'mega', title: '🔄 Mega Raids', color: CONFIG.COLORS.RED },
+    { key: 'lvl5', title: '⭐⭐⭐⭐⭐ Level 5 Raids', color: CONFIG.COLORS.ORANGE },
+    { key: 'lvl3', title: '⭐⭐⭐ Level 3 Raids', color: CONFIG.COLORS.BLUE },
+    { key: 'lvl1', title: '⭐ Level 1 Raids', color: CONFIG.COLORS.GREEN }
+  ];
 
-  // Mega Raids
-  if (raidData.currentList.mega?.length > 0) {
-    const megaEmbed = {
-      title: "🔄 Mega Raids",
-      color: 0xff0000, // Red
-      fields: raidData.currentList.mega.map((pokemon) => {
-        // Get counter types for this Pokemon
-        const counterTypes = pokemon.counter
-          ? Object.keys(pokemon.counter).sort(
-              (a, b) => pokemon.counter[b] - pokemon.counter[a]
-            )
-          : [];
+  raidTiers.forEach(tier => {
+    const raidList = raidData.currentList[tier.key];
+    if (raidList?.length > 0) {
+      const embed = EmbedUtils.createBaseEmbed(tier.title, tier.color);
+      
+      raidList.forEach(pokemon => {
+        const field = EmbedUtils.createRaidPokemonField(pokemon);
+        embed.fields.push(field);
+      });
+      
+      EmbedUtils.setThumbnail(embed, raidList[0]?.assets?.image);
+      embeds.push(embed);
+    }
+  });
 
-        // Shiny availability emoji
-        const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-
-        return {
-          name: pokemon.names.English,
-          value: `🏆 Perfect IV CP: **${
-            pokemon.cpRange[1]
-          }**\n☀️ Perfect IV CP (Weather Boosted): **${
-            pokemon.cpRangeBoost[1]
-          }**${
-            counterTypes.length > 0
-              ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
-              : ""
-          }\n✨ Shiny? ${shinyEmoji}`,
-          inline: true,
-        };
-      }),
-      thumbnail: {
-        url:
-          raidData.currentList.mega[0]?.assets?.image ||
-          "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-      },
-      footer: {
-        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-      },
-    };
-    embeds.push(megaEmbed);
-  }
-
-  // Level 5 Raids
-  if (raidData.currentList.lvl5?.length > 0) {
-    const lvl5Embed = {
-      title: "⭐⭐⭐⭐⭐ Level 5 Raids",
-      color: 0xffa500, // Orange
-      fields: raidData.currentList.lvl5.map((pokemon) => {
-        const counterTypes = pokemon.counter
-          ? Object.keys(pokemon.counter).sort(
-              (a, b) => pokemon.counter[b] - pokemon.counter[a]
-            )
-          : [];
-        const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-        return {
-          name: pokemon.names.English,
-          value: `🏆 Perfect IV CP: **${
-            pokemon.cpRange[1]
-          }**\n☀️ Perfect IV CP (Weather Boosted): **${
-            pokemon.cpRangeBoost[1]
-          }**${
-            counterTypes.length > 0
-              ? `\n⚔️ Weak to: ${counterTypes.join(", ")}`
-              : ""
-          }\n✨ Shiny? ${shinyEmoji}`,
-          inline: true,
-        };
-      }),
-      thumbnail: {
-        url:
-          raidData.currentList.lvl5[0]?.assets?.image ||
-          "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-      },
-      footer: {
-        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-      },
-    };
-    embeds.push(lvl5Embed);
-  }
-
-  // Level 3 Raids (simplified from original for brevity)
-  if (raidData.currentList.lvl3?.length > 0) {
-    const lvl3Embed = {
-      title: "⭐⭐⭐ Level 3 Raids",
-      color: 0x0000ff, // Blue
-      fields: raidData.currentList.lvl3.map((pokemon) => {
-        const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-        return {
-          name: pokemon.names.English,
-          value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**\n✨ Shiny? ${shinyEmoji}`,
-          inline: true,
-        };
-      }),
-      thumbnail: {
-        url: raidData.currentList.lvl3[0]?.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-      },
-      footer: {
-        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-      },
-    };
-    embeds.push(lvl3Embed);
-  }
-
-  // Level 1 Raids (simplified from original for brevity)
-  if (raidData.currentList.lvl1?.length > 0) {
-    const lvl1Embed = {
-      title: "⭐ Level 1 Raids",
-      color: 0x00ff00, // Green
-      fields: raidData.currentList.lvl1.map((pokemon) => {
-        const shinyEmoji = pokemon.shiny === true ? "✅" : "❌";
-        return {
-          name: pokemon.names.English,
-          value: `🏆 Perfect IV CP: **${pokemon.cpRange[1]}**\n☀️ Perfect IV CP (Weather Boosted): **${pokemon.cpRangeBoost[1]}**\n✨ Shiny? ${shinyEmoji}`,
-          inline: true,
-        };
-      }),
-      thumbnail: {
-        url: raidData.currentList.lvl1[0]?.assets?.image || "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-      },
-      footer: {
-        text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-      },
-    };
-    embeds.push(lvl1Embed);
-  }
-
-  // Return just the embeds, which Discord will handle
-  return {
-    embeds: embeds
-  };
+  return { embeds };
 }
 
 // Handle Raid Boss command
 async function handleRaidBossCommand(options) {
-  const bossName = options.find(opt => opt.name === "name").value;
-  const raidData = await getRaidBosses();
-
-  if (!raidData) {
-    return {
-      content: "Sorry, I couldn't fetch the raid data at the moment."
-    };
+  const bossName = options.find(opt => opt.name === "name")?.value;
+  if (!bossName) {
+    return { content: "Boss name is required." };
   }
 
-  // Collect all raid bosses from different tiers
-  const allRaids = [
-    ...(raidData.currentList.mega || []),
-    ...(raidData.currentList.lvl5 || []),
-    ...(raidData.currentList.lvl3 || []),
-    ...(raidData.currentList.lvl1 || []),
-  ];
+  const raidData = await getRaidBosses();
+  if (!raidData) {
+    return { content: "Sorry, I couldn't fetch the raid data at the moment." };
+  }
 
-  // Find the selected raid boss
-  const boss = allRaids.find(
-    (p) => p.names.English.toLowerCase() === bossName.toLowerCase()
-  );
+  const allRaids = getAllRaids(raidData);
+  const boss = allRaids.find(p => p.names.English.toLowerCase() === bossName.toLowerCase());
 
   if (!boss) {
-    return {
-      content: `Couldn't find ${bossName} in the current raid bosses.`
-    };
+    return { content: `Couldn't find ${bossName} in the current raid bosses.` };
   }
 
-  // Determine the raid level and color
-  let raidLevel = "";
-  let color = 0x00ff00; // Default green
+  // Determine raid level and color
+  const raidConfig = {
+    mega: { level: "Mega Raid", color: CONFIG.COLORS.RED },
+    lvl5: { level: "Level 5 Raid", color: CONFIG.COLORS.ORANGE },
+    lvl3: { level: "Level 3 Raid", color: CONFIG.COLORS.BLUE },
+    lvl1: { level: "Level 1 Raid", color: CONFIG.COLORS.GREEN }
+  };
 
-  if (boss.level === "mega") {
-    raidLevel = "Mega Raid";
-    color = 0xff0000; // Red
-  } else if (raidData.currentList.lvl5.includes(boss)) {
-    raidLevel = "Level 5 Raid";
-    color = 0xffa500; // Orange
-  } else if (raidData.currentList.lvl3.includes(boss)) {
-    raidLevel = "Level 3 Raid";
-    color = 0x0000ff; // Blue
-  } else if (raidData.currentList.lvl1.includes(boss)) {
-    raidLevel = "Level 1 Raid";
-    color = 0x00ff00; // Green
+  let config = raidConfig.lvl1; // default
+  for (const [key, value] of Object.entries(raidConfig)) {
+    if (raidData.currentList[key]?.includes(boss)) {
+      config = value;
+      break;
+    }
   }
 
-  // Build the counters section
+  // Build counters text
   let countersText = "";
   if (boss.counter) {
-    // Sort counters by effectiveness
     const sortedCounters = Object.entries(boss.counter)
       .sort(([, a], [, b]) => b - a)
       .map(([type, multiplier]) => `${type} (${multiplier}x)`);
-
     countersText = sortedCounters.join(", ");
   }
 
-  // Create the main embed with normal image
-  const mainEmbed = {
-    title: `${boss.names.English} - ${raidLevel}`,
-    color: color,
-    description:
-      `**Types**: ${boss.types.join(", ")}\n\n` +
-      `🏆 **Perfect IV CP**: ${boss.cpRange[1]}\n` +
-      `☀️ **Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n` +
-      (countersText ? `⚔️ **Weak to**: ${countersText}\n\n` : "") +
-      (boss.weather
-        ? `🌤️ **Boosted in**: ${boss.weather
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(", ")} weather\n\n`
-        : "") +
-      `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}`,
-    image: {
-      url:
-        boss.assets?.image ||
-        "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png",
-    },
-    footer: {
-      text: "Data provided by Pokemon GO API (github.com/pokemon-go-api/pokemon-go-api)",
-    },
-  };
+  // Build description
+  let description = `**Types**: ${boss.types.join(", ")}\n\n`;
+  description += `🏆 **Perfect IV CP**: ${boss.cpRange[1]}\n`;
+  description += `☀️ **Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n`;
+  
+  if (countersText) {
+    description += `⚔️ **Weak to**: ${countersText}\n\n`;
+  }
+  
+  if (boss.weather) {
+    description += `🌤️ **Boosted in**: ${boss.weather
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(", ")} weather\n\n`;
+  }
+  
+  description += `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}`;
 
-  // Only create shiny embed if the boss can be shiny and has a shiny image
+  const mainEmbed = EmbedUtils.createBaseEmbed(
+    `${boss.names.English} - ${config.level}`,
+    config.color,
+    description
+  );
+  EmbedUtils.setImage(mainEmbed, boss.assets?.image);
+
   const embeds = [mainEmbed];
 
+  // Add shiny embed if available
   if (boss.shiny && boss.assets?.shinyImage) {
-    const shinyEmbed = {
-      title: `${boss.names.English} - Shiny Form`,
-      color: color,
-      image: {
-        url: boss.assets.shinyImage,
-      },
-    };
+    const shinyEmbed = EmbedUtils.createBaseEmbed(
+      `${boss.names.English} - Shiny Form`,
+      config.color
+    );
+    EmbedUtils.setImage(shinyEmbed, boss.assets.shinyImage);
     embeds.push(shinyEmbed);
   }
 
-  return {
-    embeds: embeds
-  };
+  return { embeds };
 }
 
 // Handle Research command
 async function handleResearchCommand(options) {
-  const researchTask = options.find(opt => opt.name === "task").value;
+  const researchTask = options.find(opt => opt.name === "task")?.value;
+  if (!researchTask) {
+    return { content: "Research task is required." };
+  }
+
   const researchData = await getResearchData();
-  
   if (!researchData || researchData.length === 0) {
-    return {
-      content: "Sorry, I couldn't fetch the research data at the moment."
-    };
+    return { content: "Sorry, I couldn't fetch the research data at the moment." };
   }
 
-  // Find the exact research task
   const task = researchData.find(t => t.text === researchTask);
-  
   if (!task) {
-    return {
-      content: `Couldn't find research task: "${researchTask}"`
-    };
+    return { content: `Couldn't find research task: "${researchTask}"` };
   }
 
-  // Create an embed with the research details
-  const embed = {
-    title: "Research Task",
-    description: task.text,
-    color: 0x3498db, // Blue color
-    fields: [],
-    footer: {
-      text: "Data from Leek Duck (via ScrapedDuck)"
-    }
-  };
+  const embed = EmbedUtils.createBaseEmbed("Research Task", CONFIG.COLORS.DISCORD_BLUE, task.text);
+  EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
 
-  // Handle rewards (which is an array in the API)
-  if (task.rewards && Array.isArray(task.rewards) && task.rewards.length > 0) {
-    // Create a rewards field that displays all possible rewards
+  // Handle rewards
+  if (task.rewards?.length > 0) {
     const rewardsText = task.rewards.map(reward => {
       let text = `**${reward.name}**`;
-      
-      // Add CP range if available
       if (reward.combatPower) {
         text += ` (CP: ${reward.combatPower.min}-${reward.combatPower.max})`;
       }
-      
-      // Add shiny info if available
       if (reward.canBeShiny) {
         text += " ✨";
       }
-      
       return text;
     }).join('\n');
     
-    embed.fields.push({
-      name: "Possible Rewards",
-      value: rewardsText || "Unknown rewards",
-      inline: false
-    });
+    EmbedUtils.addField(embed, "Possible Rewards", rewardsText || "Unknown rewards");
     
-    // If there's an image for the first reward, add it
     if (task.rewards[0]?.image) {
-      embed.thumbnail = {
-        url: task.rewards[0].image
-      };
+      EmbedUtils.setThumbnail(embed, task.rewards[0].image);
     }
   } else {
-    embed.fields.push({
-      name: "Rewards",
-      value: "No reward information available",
-      inline: false
-    });
+    EmbedUtils.addField(embed, "Rewards", "No reward information available");
   }
 
-  // Add other fields if they exist
+  // Add additional fields
   if (task.type) {
-    embed.fields.push({
-      name: "Type",
-      value: task.type,
-      inline: true
-    });
+    EmbedUtils.addField(embed, "Type", task.type, true);
   }
-
   if (task.category) {
-    embed.fields.push({
-      name: "Category",
-      value: task.category,
-      inline: true
-    });
+    EmbedUtils.addField(embed, "Category", task.category, true);
   }
 
-  return {
-    embeds: [embed]
-  };
+  return { embeds: [embed] };
 }
 
 // Handle egg command
 async function handleEggCommand(options) {
+  const eggType = options.find(opt => opt.name === "type")?.value;
+  if (!eggType) {
+    return { content: "Egg type is required." };
+  }
+
   try {
-    const eggType = options.find(opt => opt.name === "type").value;
     const data = await getEggData();
-    
-    if (!data || !Array.isArray(data)) {
-      return {
-        content: "Sorry, I couldn't fetch egg data at this time."
-      };
+    if (!data?.length) {
+      return { content: "Sorry, I couldn't fetch egg data at this time." };
     }
     
-    // Filter Pokémon that match the selected egg type
     const pokemonInEgg = data.filter(p => p.eggType.toLowerCase() === eggType.toLowerCase());
-    
     if (pokemonInEgg.length === 0) {
-      return {
-        content: `Sorry, I couldn't find information for "${eggType}" eggs.`
-      };
+      return { content: `Sorry, I couldn't find information for "${eggType}" eggs.` };
     }
     
-    // Create an embed with egg information
-    const embed = {
-      title: `${eggType} Eggs`,
-      color: 0x00BFFF, // DeepSkyBlue
-      description: `Here are Pokémon that can hatch from ${eggType} eggs:`,
-      fields: [],
-      footer: {
-        text: "Data from Leek Duck (via ScrapedDuck)"
-      }
+    const embed = EmbedUtils.createBaseEmbed(
+      `${eggType} Eggs`,
+      CONFIG.COLORS.DEEP_SKY_BLUE,
+      `Here are Pokémon that can hatch from ${eggType} eggs:`
+    );
+    EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+    
+    // Group Pokemon efficiently
+    const groups = {
+      shiny: pokemonInEgg.filter(p => p.canBeShiny),
+      nonShiny: pokemonInEgg.filter(p => !p.canBeShiny),
+      adventureSync: pokemonInEgg.filter(p => p.isAdventureSync),
+      regional: pokemonInEgg.filter(p => p.isRegional)
     };
     
-    // Group Pokémon by shininess
-    const shinyPokemon = pokemonInEgg.filter(p => p.canBeShiny);
-    const nonShinyPokemon = pokemonInEgg.filter(p => !p.canBeShiny);
-    
-    // Add fields for Pokémon that can be shiny
-    if (shinyPokemon.length > 0) {
-      const shinyNames = shinyPokemon.map(p => `${p.name} ✨`).join(", ");
-      embed.fields.push({
-        name: "Can be Shiny",
-        value: shinyNames,
-        inline: false
-      });
+    // Add fields for each group
+    if (groups.shiny.length > 0) {
+      EmbedUtils.addField(embed, "Can be Shiny", groups.shiny.map(p => `${p.name} ✨`).join(", "));
     }
     
-    // Add fields for Pokémon that cannot be shiny
-    if (nonShinyPokemon.length > 0) {
-      const nonShinyNames = nonShinyPokemon.map(p => p.name).join(", ");
-      embed.fields.push({
-        name: "Cannot be Shiny",
-        value: nonShinyNames,
-        inline: false
-      });
+    if (groups.nonShiny.length > 0) {
+      EmbedUtils.addField(embed, "Cannot be Shiny", groups.nonShiny.map(p => p.name).join(", "));
     }
     
-    // Add special notes about the eggs (Adventure Sync, Regional, etc.)
-    const adventureSyncPokemon = pokemonInEgg.filter(p => p.isAdventureSync);
-    if (adventureSyncPokemon.length > 0) {
-      embed.fields.push({
-        name: "Adventure Sync Exclusive",
-        value: adventureSyncPokemon.map(p => p.name).join(", "),
-        inline: false
-      });
+    if (groups.adventureSync.length > 0) {
+      EmbedUtils.addField(embed, "Adventure Sync Exclusive", groups.adventureSync.map(p => p.name).join(", "));
     }
     
-    const regionalPokemon = pokemonInEgg.filter(p => p.isRegional);
-    if (regionalPokemon.length > 0) {
-      embed.fields.push({
-        name: "Regional Exclusive",
-        value: regionalPokemon.map(p => p.name).join(", "),
-        inline: false
-      });
+    if (groups.regional.length > 0) {
+      EmbedUtils.addField(embed, "Regional Exclusive", groups.regional.map(p => p.name).join(", "));
     }
     
-    // Add thumbnail if we have a sample Pokémon with an image
     if (pokemonInEgg[0]?.image) {
-      embed.thumbnail = {
-        url: pokemonInEgg[0].image
-      };
+      EmbedUtils.setThumbnail(embed, pokemonInEgg[0].image);
     }
     
-    return {
-      embeds: [embed]
-    };
+    return { embeds: [embed] };
   } catch (error) {
     console.error("Error handling egg command:", error);
-    return {
-      content: "Sorry, an error occurred while processing your request."
-    };
+    return { content: "Sorry, an error occurred while processing your request." };
   }
 }
 
-// Handle autocomplete for Pokemon command
-async function handlePokemonAutocomplete(focusedValue) {
-  if (!pokedexCache) {
-    pokedexCache = await getPokedex();
-  }
-  
-  if (!pokedexCache) {
-    return []; // Return empty if we couldn't get the pokedex
-  }
+// Optimized autocomplete handlers
+const AutocompleteHandlers = {
+  async pokemon(focusedValue) {
+    const pokedex = await getPokedex();
+    if (!pokedex) return [];
 
-  const searchValue = focusedValue.toLowerCase();
-  if (!searchValue) {
-    // Return a few popular ones if no search term
-    return pokedexCache
-      .filter(p => ["pikachu", "charizard", "mewtwo", "rayquaza", "tyranitar"].includes(p.names.English.toLowerCase()))
-      .slice(0, 25)
-      .map(p => ({
-        name: p.names.English,
-        value: p.names.English
-      }));
-  }
-
-  // Filter Pokemon by name
-  return pokedexCache
-    .filter(p => p.names.English.toLowerCase().includes(searchValue))
-    .slice(0, 25)
-    .map(p => ({
-      name: p.names.English,
-      value: p.names.English
-    }));
-}
-
-// Handle autocomplete for RaidBoss and Hundo commands
-async function handleRaidBossAutocomplete(focusedValue) {
-  // Get current raid bosses instead of using pokedex
-  const raidData = await getRaidBosses();
-  
-  if (!raidData) {
-    return []; // Return empty if we couldn't get the raid data
-  }
-
-  // Collect all current raid bosses from different tiers
-  const allRaids = [
-    ...(raidData.currentList.mega || []),
-    ...(raidData.currentList.lvl5 || []),
-    ...(raidData.currentList.lvl3 || []),
-    ...(raidData.currentList.lvl1 || []),
-  ];
-  
-  const searchValue = focusedValue.toLowerCase();
-  if (!searchValue) {
-    // Return all current raid bosses if no search term (up to 25)
-    return allRaids.slice(0, 25).map(p => ({
-      name: p.names.English,
-      value: p.names.English
-    }));
-  }
-
-  // Filter raid bosses by name
-  return allRaids
-    .filter(p => p.names.English.toLowerCase().includes(searchValue))
-    .slice(0, 25)
-    .map(p => ({
-      name: p.names.English,
-      value: p.names.English
-    }));
-}
-
-// Handle research autocomplete
-async function handleResearchAutocomplete(focusedValue) {
-  const researchData = await getResearchData();
-  
-  if (!researchData || researchData.length === 0) {
-    return [];
-  }
-  
-  const searchValue = focusedValue.toLowerCase();
-  if (!searchValue) {
-    // Return first 25 research tasks if no search term
-    return researchData.slice(0, 25).map(task => ({
-      name: task.text.length > 100 ? task.text.substring(0, 97) + '...' : task.text,
-      value: task.text
-    }));
-  }
-
-  // Filter research tasks by text
-  return researchData
-    .filter(task => task.text.toLowerCase().includes(searchValue))
-    .slice(0, 25)
-    .map(task => ({
-      name: task.text.length > 100 ? task.text.substring(0, 97) + '...' : task.text,
-      value: task.text
-    }));
-}
-
-// Handle autocomplete for egg command
-async function handleEggAutocomplete(focusedValue) {
-  try {
-    const data = await getEggData();
-    if (!data || !Array.isArray(data)) {
-      console.error("Invalid egg data structure");
-      return [];
+    const searchValue = focusedValue.toLowerCase();
+    if (!searchValue) {
+      return pokedex
+        .filter(p => CONFIG.LIMITS.POPULAR_POKEMON.includes(p.names.English.toLowerCase()))
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+        .map(p => ({ name: p.names.English, value: p.names.English }));
     }
 
-    // Create a list of unique egg types
-    const eggTypes = [...new Set(data.map(egg => egg.eggType))];
+    return pokedex
+      .filter(p => p.names.English.toLowerCase().includes(searchValue))
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+      .map(p => ({ name: p.names.English, value: p.names.English }));
+  },
+
+  async raidBoss(focusedValue) {
+    const raidData = await getRaidBosses();
+    if (!raidData) return [];
+
+    const allRaids = getAllRaids(raidData);
+    const searchValue = focusedValue.toLowerCase();
     
-    // Filter egg types that match user input
-    const filteredTypes = eggTypes.filter(type => 
-      type.toLowerCase().includes(focusedValue.toLowerCase())
-    ).slice(0, 25); // Limit to 25 results (Discord limit)
+    if (!searchValue) {
+      return allRaids
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+        .map(p => ({ name: p.names.English, value: p.names.English }));
+    }
+
+    return allRaids
+      .filter(p => p.names.English.toLowerCase().includes(searchValue))
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+      .map(p => ({ name: p.names.English, value: p.names.English }));
+  },
+
+  async research(focusedValue) {
+    const researchData = await getResearchData();
+    if (!researchData?.length) return [];
     
-    // Format for Discord's autocomplete
-    return filteredTypes.map(type => ({
-      name: type,
-      value: type
-    }));
-  } catch (error) {
-    console.error("Error in egg autocomplete:", error);
-    return [];
+    const searchValue = focusedValue.toLowerCase();
+    const filtered = searchValue 
+      ? researchData.filter(task => task.text.toLowerCase().includes(searchValue))
+      : researchData;
+    
+    return filtered
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+      .map(task => ({
+        name: task.text.length > 100 ? task.text.substring(0, 97) + '...' : task.text,
+        value: task.text
+      }));
+  },
+
+  async egg(focusedValue) {
+    try {
+      const data = await getEggData();
+      if (!data?.length) return [];
+
+      const eggTypes = [...new Set(data.map(egg => egg.eggType))];
+      const filtered = eggTypes.filter(type => 
+        type.toLowerCase().includes(focusedValue.toLowerCase())
+      );
+      
+      return filtered
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+        .map(type => ({ name: type, value: type }));
+    } catch (error) {
+      console.error("Error in egg autocomplete:", error);
+      return [];
+    }
   }
-}
+};
 
 // Main worker handler
 export default {
@@ -797,12 +641,7 @@ export default {
     
     // Skip verification in dev/test mode if PUBLIC_KEY is not set
     if (env.PUBLIC_KEY && signature && timestamp) {
-      const isValidRequest = verifyKey(
-        bodyText,
-        signature,
-        timestamp,
-        env.PUBLIC_KEY
-      );
+      const isValidRequest = verifyKey(bodyText, signature, timestamp, env.PUBLIC_KEY);
       
       if (!isValidRequest) {
         console.error('Invalid request signature');
@@ -823,10 +662,7 @@ export default {
     if (body.type === 1) {
       return new Response(
         JSON.stringify({ type: 1 }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200
-        }
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
       );
     }
     
@@ -837,75 +673,38 @@ export default {
     if (body.type === 4) {
       console.log('Autocomplete interaction received:', JSON.stringify(body));
       
-      // Try to extract command name and focused value safely
-      let commandName = '';
-      let focusedValue = '';
-      
       try {
-        if (body.data && body.data.name) {
-          commandName = body.data.name;
-        } else if (body.data && body.data.command && body.data.command.name) {
-          commandName = body.data.command.name;
-        }
+        let commandName = body.data?.name || body.data?.command?.name || '';
+        let focusedValue = '';
         
-        if (body.data && body.data.options && Array.isArray(body.data.options)) {
+        if (body.data?.options?.length > 0) {
           const focusedOption = body.data.options.find(opt => opt.focused);
-          if (focusedOption) {
-            focusedValue = focusedOption.value || '';
-          }
+          focusedValue = focusedOption?.value || '';
         }
         
         console.log(`Command: ${commandName}, Focused value: ${focusedValue}`);
         
         let choices = [];
+        const handler = AutocompleteHandlers[commandName.toLowerCase()];
         
-        switch (commandName.toLowerCase()) {
-          case 'pokemon':
-            choices = await handlePokemonAutocomplete(focusedValue);
-            break;
-          case 'hundo':
-            // For 'hundo' command, we need to check for the "pokemon" parameter
-            choices = await handleRaidBossAutocomplete(focusedValue);
-            break;
-          case 'raidboss':
-            choices = await handleRaidBossAutocomplete(focusedValue);
-            break;
-          case 'research':
-            choices = await handleResearchAutocomplete(focusedValue);
-            break;
-          case 'egg':
-            choices = await handleEggAutocomplete(focusedValue);
-            break;
-          default:
-            choices = [];
+        if (handler) {
+          choices = await handler(focusedValue);
+        } else if (commandName.toLowerCase() === 'hundo') {
+          choices = await AutocompleteHandlers.raidBoss(focusedValue);
         }
         
         return new Response(
           JSON.stringify({
             type: 8, // APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
-            data: {
-              choices: choices
-            }
+            data: { choices }
           }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200
-          }
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         );
       } catch (error) {
         console.error('Error handling autocomplete:', error);
-        console.error('Body structure:', JSON.stringify(body, null, 2));
         return new Response(
-          JSON.stringify({
-            type: 8,
-            data: {
-              choices: []
-            }
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200
-          }
+          JSON.stringify({ type: 8, data: { choices: [] } }),
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         );
       }
     }
@@ -915,58 +714,37 @@ export default {
       const { name } = body.data;
       const options = body.data.options || [];
       
-      let responseData;
-      
       try {
-        switch (name.toLowerCase()) {
-          case 'pokemon':
-            responseData = await handlePokemonCommand(options);
-            break;
-          case 'hundo':
-            responseData = await handleHundoCommand(options);
-            break;
-          case 'currentraids':
-            responseData = await handleCurrentRaidsCommand();
-            break;
-          case 'raidboss':
-            responseData = await handleRaidBossCommand(options);
-            break;
-          case 'research':
-            responseData = await handleResearchCommand(options);
-            break;
-          case 'egg':
-            responseData = await handleEggCommand(options);
-            break;
-          default:
-            responseData = { content: "Unknown command" };
-        }
+        const commandHandlers = {
+          pokemon: handlePokemonCommand,
+          hundo: handleHundoCommand,
+          currentraids: handleCurrentRaidsCommand,
+          raidboss: handleRaidBossCommand,
+          research: handleResearchCommand,
+          egg: handleEggCommand
+        };
         
-        // Return the response to Discord
+        const handler = commandHandlers[name.toLowerCase()];
+        const responseData = handler 
+          ? await handler(options)
+          : { content: "Unknown command" };
+        
         return new Response(
           JSON.stringify({
             type: 4, // CHANNEL_MESSAGE_WITH_SOURCE
             data: responseData,
           }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200
-          }
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         );
       } catch (error) {
         console.error('Error handling command:', error);
         
-        // Return an error message to Discord
         return new Response(
           JSON.stringify({
             type: 4,
-            data: {
-              content: "Sorry, an error occurred while processing your request.",
-            },
+            data: { content: "Sorry, an error occurred while processing your request." },
           }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200
-          }
+          { headers: { 'Content-Type': 'application/json' }, status: 200 }
         );
       }
     }
@@ -974,10 +752,7 @@ export default {
     // Any other type of interaction
     return new Response(
       JSON.stringify({ error: 'Unsupported interaction type' }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-        status: 400
-      }
+      { headers: { 'Content-Type': 'application/json' }, status: 400 }
     );
   }
 };

@@ -24,7 +24,7 @@ describe('Cloudflare Worker Tests', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
     expect(workerContent).toContain('async function getPokedex()');
     expect(workerContent).toContain('async function getRaidBosses()');
-    expect(workerContent).toContain('async function findPokemon(');
+    expect(workerContent).toContain('function findPokemon(');
   });
 
   test('Worker handles required interaction types', () => {
@@ -39,9 +39,27 @@ describe('Cloudflare Worker Tests', () => {
 
   test('Worker implements all required commands', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
-    expect(workerContent).toContain('case \'pokemon\'');
-    expect(workerContent).toContain('case \'hundo\'');
-    expect(workerContent).toContain('case \'currentraids\'');
-    expect(workerContent).toContain('case \'raidboss\'');
+    // Check for command handlers in the new structure
+    expect(workerContent).toContain('pokemon: handlePokemonCommand');
+    expect(workerContent).toContain('hundo: handleHundoCommand');
+    expect(workerContent).toContain('currentraids: handleCurrentRaidsCommand');
+    expect(workerContent).toContain('raidboss: handleRaidBossCommand');
+  });
+
+  test('Worker contains optimized features', () => {
+    const workerContent = fs.readFileSync(workerPath, 'utf8');
+    // Check for new optimized features
+    expect(workerContent).toContain('const CONFIG = {');
+    expect(workerContent).toContain('class CacheManager');
+    expect(workerContent).toContain('const EmbedUtils = {');
+    expect(workerContent).toContain('const AutocompleteHandlers = {');
+    expect(workerContent).toContain('fetchWithValidation');
+  });
+
+  test('Worker has proper error handling', () => {
+    const workerContent = fs.readFileSync(workerPath, 'utf8');
+    expect(workerContent).toContain('try {');
+    expect(workerContent).toContain('catch (error)');
+    expect(workerContent).toContain('console.error');
   });
 }); 
