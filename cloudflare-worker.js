@@ -589,7 +589,22 @@ const AutocompleteHandlers = {
 
   async hundo(focusedValue) {
     // Hundo uses the same logic as raidboss since it's for raid bosses
-    return this.raidboss(focusedValue);
+    const raidData = await getRaidBosses();
+    if (!raidData) return [];
+
+    const allRaids = getAllRaids(raidData);
+    const searchValue = focusedValue.toLowerCase();
+    
+    if (!searchValue) {
+      return allRaids
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+        .map(p => ({ name: p.names.English, value: p.names.English }));
+    }
+
+    return allRaids
+      .filter(p => p.names.English.toLowerCase().includes(searchValue))
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+      .map(p => ({ name: p.names.English, value: p.names.English }));
   },
 
   async research(focusedValue) {
