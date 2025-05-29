@@ -6,12 +6,12 @@ cd "$(dirname "$0")/.."
 # Check if Wrangler is installed
 if ! command -v wrangler &> /dev/null; then
     echo "Wrangler not found. Installing..."
-    npm install -g wrangler
+    pnpm install -g wrangler
 fi
 
 # Install project dependencies
 echo "Installing dependencies..."
-npm install
+pnpm install
 
 # Check for .env file
 if [ ! -f .env ]; then
@@ -23,10 +23,10 @@ fi
 
 # Deploy the worker
 echo "Deploying Cloudflare Worker..."
-npm run deploy
+pnpm run deploy
 
 # Register commands
 echo "Registering commands..."
-npm run register
+pnpm run register
 
 echo "Deployment completed!" 

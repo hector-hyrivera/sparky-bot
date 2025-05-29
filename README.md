@@ -27,7 +27,7 @@ A Discord bot that provides Pokemon GO related information and utilities, implem
 3. **Install dependencies**:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Deploying to Cloudflare Workers
@@ -35,15 +35,15 @@ npm install
 1. **Login to Cloudflare**:
 
    ```bash
-   npx wrangler login
+   pnpm exec wrangler login
    ```
 
 2. **Set up secrets in Cloudflare Workers**:
 
    ```bash
-   npx wrangler secret put CLIENT_ID
-   npx wrangler secret put DISCORD_TOKEN
-   npx wrangler secret put PUBLIC_KEY
+   pnpm exec wrangler secret put CLIENT_ID
+   pnpm exec wrangler secret put DISCORD_TOKEN
+   pnpm exec wrangler secret put PUBLIC_KEY
    ```
 
    You'll be prompted to enter each value.
@@ -51,13 +51,13 @@ npm install
 3. **Run the bot locally for testing**:
 
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
 4. **Deploy to Cloudflare Workers**:
 
    ```bash
-   npm run deploy
+   pnpm run deploy
    ```
 
    The deploy command will output your Worker's URL. Set this as your Discord Interactions Endpoint URL.
@@ -65,14 +65,14 @@ npm install
 5. **Register commands**:
 
    ```bash
-   npm run register
+   pnpm run register
    ```
 
 By default, this will register commands for the guild specified in your .env file.
 To register commands globally (may take up to an hour to propagate):
 
 1. Remove GUILD_ID from your .env file
-2. Run `npm run register`
+2. Run `pnpm run register`
 
 ## Technical Details
 

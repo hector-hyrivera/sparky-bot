@@ -4,7 +4,7 @@
 
 # Dependencies
 node_modules/
-npm-debug.log*
+pnpm-debug.log*
 
 # IDE
 .vscode/
