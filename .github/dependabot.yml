@@ -5,7 +5,7 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
+  - package-ecosystem: "npm" # Works with pnpm projects via package.json
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"

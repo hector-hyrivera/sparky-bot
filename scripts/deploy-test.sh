@@ -13,11 +13,11 @@ rm -rf .wrangler/
 
 # Install dependencies (as CI would)
 echo "📦 Installing dependencies..."
-npm ci
+pnpm install --frozen-lockfile
 
 # Build the worker
 echo "🔨 Building worker..."
-npm run build
+pnpm run build
 
 # Check if build succeeded
 if [ -f "dist/cloudflare-worker.js" ]; then
@@ -29,4 +29,4 @@ else
 fi
 
 echo "✨ Deployment test completed successfully!"
-echo "You can now run 'npm run deploy' to deploy to Cloudflare Workers." 
+echo "You can now run 'pnpm run deploy' to deploy to Cloudflare Workers." 

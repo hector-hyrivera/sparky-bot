@@ -26,4 +26,4 @@ chmod +x scripts/*.sh
 echo "✅ Fixed script permissions"
 
 echo "✨ Cleanup complete!"
-echo "Run 'npm install' to ensure dependencies are up to date." 
+echo "Run 'pnpm install' to ensure dependencies are up to date." 
