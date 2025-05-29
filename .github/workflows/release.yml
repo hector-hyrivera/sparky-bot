@@ -6,6 +6,7 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+' # Major.Minor.Patch
       - 'v0-9]+.[0-9]+.[0-9]+-beta.[0-9]+' # Beta releases
       - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+' # Release candidates
+  workflow_dispatch:
 
 jobs:
   release:
