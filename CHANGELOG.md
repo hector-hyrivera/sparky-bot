@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0]
+
+### Added
+
+- Hundo handler for raid boss autocomplete with enhanced search functionality
+- Enhanced caching and configuration management for improved performance
+
+### Enhanced
+
+- Optimized Cloudflare Worker with better command handling and code organization
+- Improved command consistency by renaming raidBoss to raidboss
+- Enhanced CI workflows with better pnpm integration and manual execution triggers
+
+### Chore
+
+- Migrated project from npm to pnpm for better dependency management
+- Updated installation commands in README and deployment scripts
+- Removed version specification for pnpm installation in CI workflows
+- Added workflow_dispatch trigger to release workflow for manual execution
+
 ## [1.2.7]
 
 ### Chore
