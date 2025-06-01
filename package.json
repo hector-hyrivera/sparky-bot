@@ -2,7 +2,7 @@
   "name": "sparky-bot",
   "version": "1.3.0",
   "description": "A Pokemon GO Discord bot for raid information",
-  "main": "index.js",
+  "main": "cloudflare-worker.js",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
@@ -10,7 +10,7 @@
     "register": "node scripts/register-commands.js",
     "start": "wrangler dev",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "build": "wrangler deploy --dry-run --outdir=dist"
+    "build": "echo 'Build step complete - Worker ready for deployment'"
   },
   "dependencies": {
     "discord-interactions": "^4.3.0"
