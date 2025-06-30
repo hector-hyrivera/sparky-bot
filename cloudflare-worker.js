@@ -681,7 +681,8 @@ export default {
     const signature = request.headers.get('x-signature-ed25519');
     const timestamp = request.headers.get('x-signature-timestamp');
     const publicKey = env.PUBLIC_KEY;
-    const bodyText = await request.text();
+    const bodyBuffer = await request.arrayBuffer();
+    const bodyUint8 = new Uint8Array(bodyBuffer);
 
     if (!publicKey || !signature || !timestamp) {
       // All must be present, or reject
@@ -690,7 +691,7 @@ export default {
 
     let isValidRequest = false;
     try {
-      isValidRequest = verifyKey(bodyText, signature, timestamp, publicKey);
+      isValidRequest = verifyKey(bodyUint8, signature, timestamp, publicKey);
     } catch (e) {
       isValidRequest = false;
     }
@@ -702,6 +703,7 @@ export default {
     // Parse the request body as JSON
     let body;
     try {
+      const bodyText = new TextDecoder().decode(bodyUint8);
       body = JSON.parse(bodyText);
     } catch (error) {
       return new Response('Invalid JSON', { status: 400 });
