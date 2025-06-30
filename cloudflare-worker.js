@@ -677,29 +677,33 @@ export default {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    // Get the request body as text
-    const bodyText = await request.text();
-    
-    // Verify the request
+    // --- Discord signature verification: always required ---
     const signature = request.headers.get('x-signature-ed25519');
     const timestamp = request.headers.get('x-signature-timestamp');
-    
-    // Skip verification in dev/test mode if PUBLIC_KEY is not set
-    if (env.PUBLIC_KEY && signature && timestamp) {
-      const isValidRequest = verifyKey(bodyText, signature, timestamp, env.PUBLIC_KEY);
-      
-      if (!isValidRequest) {
-        console.error('Invalid request signature');
-        return new Response('Bad request signature', { status: 401 });
-      }
+    const publicKey = env.PUBLIC_KEY;
+    const bodyText = await request.text();
+
+    if (!publicKey || !signature || !timestamp) {
+      // All must be present, or reject
+      return new Response('Missing signature headers', { status: 401 });
     }
-    
+
+    let isValidRequest = false;
+    try {
+      isValidRequest = verifyKey(bodyText, signature, timestamp, publicKey);
+    } catch (e) {
+      isValidRequest = false;
+    }
+    if (!isValidRequest) {
+      return new Response('Bad request signature', { status: 401 });
+    }
+    // --- End Discord signature verification ---
+
     // Parse the request body as JSON
     let body;
     try {
       body = JSON.parse(bodyText);
     } catch (error) {
-      console.error('Error parsing request body', error);
       return new Response('Invalid JSON', { status: 400 });
     }
     
