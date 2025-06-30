@@ -210,26 +210,38 @@ const EmbedUtils = {
   }
 };
 
-// Optimized Pokemon search with fuzzy matching
+// Optimized Pokemon search with fuzzy matching and better form handling
 function findPokemon(pokedex, name) {
   if (!pokedex) return null;
 
   const searchName = name.toLowerCase();
   console.log(`Searching for Pokemon: ${searchName}`);
 
-  // Exact match first
+  // Try exact match first
   let pokemon = pokedex.find(p => {
     const baseName = p.names.English.toLowerCase();
-    const formName = p.formId ? p.formId.toLowerCase() : "";
-    return baseName === searchName || formName === searchName;
+    // Handle form names like "Giratina Origin", "Deoxys Defense", etc.
+    const fullFormName = p.formId ? 
+      `${p.names.English.toLowerCase()} ${p.formId.toLowerCase().replace(/_/g, ' ')}` : "";
+    const formName = p.formId ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+    
+    return baseName === searchName || 
+           formName === searchName ||
+           fullFormName === searchName;
   });
 
   // Fuzzy match if no exact match
   if (!pokemon) {
     pokemon = pokedex.find(p => {
       const baseName = p.names.English.toLowerCase();
-      const formName = p.formId ? p.formId.toLowerCase() : "";
-      return baseName.includes(searchName) || formName.includes(searchName);
+      // Include both the Pokemon name with form and just the form name in search
+      const fullFormName = p.formId ? 
+        `${p.names.English.toLowerCase()} ${p.formId.toLowerCase().replace(/_/g, ' ')}` : "";
+      const formName = p.formId ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+      
+      return baseName.includes(searchName) || 
+             formName.includes(searchName) ||
+             fullFormName.includes(searchName);
     });
   }
 
@@ -555,17 +567,30 @@ const AutocompleteHandlers = {
     if (!pokedex) return [];
 
     const searchValue = focusedValue.toLowerCase();
-    if (!searchValue) {
-      return pokedex
-        .filter(p => CONFIG.LIMITS.POPULAR_POKEMON.includes(p.names.English.toLowerCase()))
-        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-        .map(p => ({ name: p.names.English, value: p.names.English }));
+    // Build choices with both base and form names, and form first for forms
+    const choices = [];
+    for (const p of pokedex) {
+      const baseName = p.names.English;
+      const formName = p.formId && p.formId !== p.id ? p.formId.replace(/_/g, ' ') : '';
+      if (formName) {
+        // Add both 'BaseName FormName' and 'FormName BaseName'
+        choices.push({ name: `${baseName} ${formName}`, value: `${baseName} ${formName}` });
+        choices.push({ name: `${formName} ${baseName}`, value: `${formName} ${baseName}` });
+      } else {
+        choices.push({ name: baseName, value: baseName });
+      }
     }
 
-    return pokedex
-      .filter(p => p.names.English.toLowerCase().includes(searchValue))
-      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-      .map(p => ({ name: p.names.English, value: p.names.English }));
+    if (!searchValue) {
+      // Show popular Pokemon and their forms if no search value
+      return choices
+        .filter(choice => CONFIG.LIMITS.POPULAR_POKEMON.some(pop => choice.name.toLowerCase().startsWith(pop)))
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS);
+    }
+
+    return choices
+      .filter(choice => choice.name.toLowerCase().includes(searchValue))
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS);
   },
 
   async raidboss(focusedValue) {
