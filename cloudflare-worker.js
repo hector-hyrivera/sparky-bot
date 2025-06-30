@@ -681,20 +681,15 @@ export default {
     const signature = request.headers.get('x-signature-ed25519');
     const timestamp = request.headers.get('x-signature-timestamp');
     const publicKey = env.PUBLIC_KEY;
-    const bodyBuffer = await request.arrayBuffer();
-    const bodyUint8 = new Uint8Array(bodyBuffer);
-
-    // Debug: Log incoming headers and public key for troubleshooting Discord validation
-    console.log('DEBUG: Incoming headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
-    console.log('DEBUG: PUBLIC_KEY:', publicKey);
-    console.log('DEBUG: signature:', signature);
-    console.log('DEBUG: timestamp:', timestamp);
-
     if (!publicKey || !signature || !timestamp) {
-      // All must be present, or reject
       return new Response('Missing signature headers', { status: 401 });
     }
 
+    // Read the body as bytes ONCE
+    const bodyBuffer = await request.arrayBuffer();
+    const bodyUint8 = new Uint8Array(bodyBuffer);
+
+    // Verify the request signature
     let isValidRequest = false;
     try {
       isValidRequest = verifyKey(bodyUint8, signature, timestamp, publicKey);
@@ -714,7 +709,7 @@ export default {
     } catch (error) {
       return new Response('Invalid JSON', { status: 400 });
     }
-    
+
     // Handle PING from Discord
     if (body.type === 1) {
       return new Response(
@@ -722,32 +717,26 @@ export default {
         { headers: { 'Content-Type': 'application/json' }, status: 200 }
       );
     }
-    
+
     // Log all interaction types to debug
     console.log(`Received interaction type: ${body.type}`);
-    
+
     // Handle autocomplete interactions
     if (body.type === 4) {
       console.log('Autocomplete interaction received:', JSON.stringify(body));
-      
       try {
         let commandName = body.data?.name || body.data?.command?.name || '';
         let focusedValue = '';
-        
         if (body.data?.options?.length > 0) {
           const focusedOption = body.data.options.find(opt => opt.focused);
           focusedValue = focusedOption?.value || '';
         }
-        
         console.log(`Command: ${commandName}, Focused value: ${focusedValue}`);
-        
         let choices = [];
         const handler = AutocompleteHandlers[commandName.toLowerCase()];
-        
         if (handler) {
           choices = await handler(focusedValue);
         }
-        
         return new Response(
           JSON.stringify({
             type: 8, // APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
@@ -763,12 +752,11 @@ export default {
         );
       }
     }
-    
+
     // Handle APPLICATION_COMMAND
     if (body.type === 2) {
       const { name } = body.data;
       const options = body.data.options || [];
-      
       try {
         const commandHandlers = {
           pokemon: handlePokemonCommand,
@@ -778,12 +766,10 @@ export default {
           research: handleResearchCommand,
           egg: handleEggCommand
         };
-        
         const handler = commandHandlers[name.toLowerCase()];
         const responseData = handler 
           ? await handler(options)
           : { content: "Unknown command" };
-        
         return new Response(
           JSON.stringify({
             type: 4, // CHANNEL_MESSAGE_WITH_SOURCE
@@ -793,7 +779,6 @@ export default {
         );
       } catch (error) {
         console.error('Error handling command:', error);
-        
         return new Response(
           JSON.stringify({
             type: 4,
@@ -803,7 +788,7 @@ export default {
         );
       }
     }
-    
+
     // Any other type of interaction
     return new Response(
       JSON.stringify({ error: 'Unsupported interaction type' }),
