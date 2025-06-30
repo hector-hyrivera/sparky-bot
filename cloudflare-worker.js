@@ -684,6 +684,12 @@ export default {
     const bodyBuffer = await request.arrayBuffer();
     const bodyUint8 = new Uint8Array(bodyBuffer);
 
+    // Debug: Log incoming headers and public key for troubleshooting Discord validation
+    console.log('DEBUG: Incoming headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
+    console.log('DEBUG: PUBLIC_KEY:', publicKey);
+    console.log('DEBUG: signature:', signature);
+    console.log('DEBUG: timestamp:', timestamp);
+
     if (!publicKey || !signature || !timestamp) {
       // All must be present, or reject
       return new Response('Missing signature headers', { status: 401 });
