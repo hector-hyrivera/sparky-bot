@@ -210,6 +210,29 @@ const EmbedUtils = {
   }
 };
 
+// Utility function to get the best image for a Pokémon or form
+function getBestPokemonImage(pokemon, basePokemon) {
+  // Use the form's own image if available
+  let imageUrl = pokemon.assets?.image;
+  if (!imageUrl && basePokemon && basePokemon.assetForms && pokemon.formId) {
+    // Try to match form in assetForms
+    const formKey = pokemon.formId.replace(`${pokemon.id}_`, '').toUpperCase();
+    const assetForm = basePokemon.assetForms.find(f => {
+      return (
+        (f.form && f.form.toUpperCase() === formKey) ||
+        (pokemon.names.English && f.form && pokemon.names.English.toLowerCase().includes(f.form.toLowerCase()))
+      );
+    });
+    if (assetForm && assetForm.image) {
+      imageUrl = assetForm.image;
+    }
+  }
+  if (!imageUrl && basePokemon && basePokemon.assets?.image) {
+    imageUrl = basePokemon.assets.image;
+  }
+  return imageUrl;
+}
+
 // Enhanced Pokemon search with comprehensive form handling
 export function findPokemon(pokedex, name) {
   if (!pokedex) return null;
@@ -297,7 +320,6 @@ async function handlePokemonCommand(options) {
   // Find the base Pokemon (for assetForms lookup)
   let basePokemon = pokemon;
   if (pokemon.formId && pokedex) {
-    // Try to find the base by id
     const found = pokedex.find(p => p.id === pokemon.id);
     if (found) basePokemon = found;
   }
@@ -323,25 +345,7 @@ async function handlePokemonCommand(options) {
   description += `🛡️ **Defense**: ${pokemon.stats.defense}\n`;
 
   // Determine the best image for the form
-  let imageUrl = pokemon.assets?.image;
-  if (!imageUrl && basePokemon.assetForms && pokemon.formId) {
-    // Try to match form in assetForms
-    const formKey = pokemon.formId.replace(`${pokemon.id}_`, '').toUpperCase();
-    const assetForm = basePokemon.assetForms.find(f => {
-      // Match by form name or by form property
-      return (
-        (f.form && f.form.toUpperCase() === formKey) ||
-        (pokemon.names.English && f.form && pokemon.names.English.toLowerCase().includes(f.form.toLowerCase()))
-      );
-    });
-    if (assetForm && assetForm.image) {
-      imageUrl = assetForm.image;
-    }
-  }
-  if (!imageUrl && basePokemon.assets?.image) {
-    imageUrl = basePokemon.assets.image;
-  }
-
+  let imageUrl = getBestPokemonImage(pokemon, basePokemon);
   const embed = EmbedUtils.createBaseEmbed(pokemon.names.English, CONFIG.COLORS.GREEN, description);
   EmbedUtils.setImage(embed, imageUrl);
 
@@ -367,6 +371,13 @@ async function handleHundoCommand(options) {
     return { content: `Couldn't find ${pokemonName} in the current raid bosses.` };
   }
 
+  // Find the base Pokemon for asset lookup
+  let basePokemon = pokemon;
+  if (pokemon.formId && raidData.pokedex) {
+    const found = raidData.pokedex.find(p => p.id === pokemon.id);
+    if (found) basePokemon = found;
+  }
+
   const embed = EmbedUtils.createBaseEmbed(
     `🏆 Perfect IV CP for ${pokemon.names.English}`,
     CONFIG.COLORS.GREEN
@@ -374,7 +385,7 @@ async function handleHundoCommand(options) {
   
   EmbedUtils.addField(embed, "🎯 Normal CP", `**${pokemon.cpRange[1]}**`, true);
   EmbedUtils.addField(embed, "☀️ Weather Boosted CP", `**${pokemon.cpRangeBoost[1]}**`, true);
-  EmbedUtils.setImage(embed, pokemon.assets?.image);
+  EmbedUtils.setImage(embed, getBestPokemonImage(pokemon, basePokemon));
 
   return { embeds: [embed] };
 }
@@ -404,7 +415,13 @@ async function handleCurrentRaidsCommand() {
         embed.fields.push(field);
       });
       
-      EmbedUtils.setThumbnail(embed, raidList[0]?.assets?.image);
+      // Find the base Pokemon for asset lookup
+      let basePokemon = raidList[0];
+      if (raidList[0]?.formId && raidData.pokedex) {
+        const found = raidData.pokedex.find(p => p.id === raidList[0].id);
+        if (found) basePokemon = found;
+      }
+      EmbedUtils.setThumbnail(embed, getBestPokemonImage(raidList[0], basePokemon));
       embeds.push(embed);
     }
   });
@@ -473,12 +490,19 @@ async function handleRaidBossCommand(options) {
   
   description += `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}`;
 
+  // Find the base Pokemon for asset lookup
+  let basePokemon = boss;
+  if (boss.formId && raidData.pokedex) {
+    const found = raidData.pokedex.find(p => p.id === boss.id);
+    if (found) basePokemon = found;
+  }
+
   const mainEmbed = EmbedUtils.createBaseEmbed(
     `${boss.names.English} - ${config.level}`,
     config.color,
     description
   );
-  EmbedUtils.setImage(mainEmbed, boss.assets?.image);
+  EmbedUtils.setImage(mainEmbed, getBestPokemonImage(boss, basePokemon));
 
   const embeds = [mainEmbed];
 
