@@ -12,7 +12,7 @@ const CONFIG = {
   },
   LIMITS: {
     AUTOCOMPLETE_RESULTS: 25,
-    POPULAR_POKEMON: ["pikachu", "charizard", "mewtwo", "rayquaza", "tyranitar"]
+    POPULAR_POKEMON: ["charizard", "mewtwo", "rayquaza", "tyranitar"]
   },
   URLS: {
     POKEDEX: "https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json",
