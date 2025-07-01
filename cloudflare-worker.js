@@ -681,24 +681,51 @@ export default {
     const signature = request.headers.get('x-signature-ed25519');
     const timestamp = request.headers.get('x-signature-timestamp');
     const publicKey = env.PUBLIC_KEY;
+    
+    // Log signature verification details for debugging
+    console.log('Signature verification details:', {
+      hasSignature: !!signature,
+      hasTimestamp: !!timestamp,
+      hasPublicKey: !!publicKey,
+      timestamp: timestamp,
+      publicKeyLength: publicKey ? publicKey.length : 0
+    });
+    
     if (!publicKey || !signature || !timestamp) {
+      console.error('Missing signature headers:', { publicKey: !!publicKey, signature: !!signature, timestamp: !!timestamp });
       return new Response('Missing signature headers', { status: 401 });
+    }
+
+    // Validate timestamp to prevent replay attacks (allow 5 minutes of clock skew)
+    const timestampNum = parseInt(timestamp);
+    const now = Math.floor(Date.now() / 1000);
+    const timeDiff = Math.abs(now - timestampNum);
+    
+    if (isNaN(timestampNum) || timeDiff > 300) { // 5 minutes = 300 seconds
+      console.error('Invalid timestamp:', { timestamp, timestampNum, now, timeDiff });
+      return new Response('Invalid timestamp', { status: 401 });
     }
 
     // Read the body as bytes ONCE
     const bodyBuffer = await request.arrayBuffer();
     const bodyUint8 = new Uint8Array(bodyBuffer);
 
-    // Verify the request signature
+    // Verify the request signature with better error handling
     let isValidRequest = false;
     try {
-      isValidRequest = verifyKey(bodyUint8, signature, timestamp, publicKey);
+      isValidRequest = await verifyKey(bodyUint8, signature, timestamp, publicKey);
+      console.log('Signature verification result:', isValidRequest);
     } catch (e) {
+      console.error('Signature verification error:', e);
       isValidRequest = false;
     }
+    
     if (!isValidRequest) {
+      console.error('Bad request signature - verification failed');
       return new Response('Bad request signature', { status: 401 });
     }
+    
+    console.log('Signature verification successful');
     // --- End Discord signature verification ---
 
     // Parse the request body as JSON
