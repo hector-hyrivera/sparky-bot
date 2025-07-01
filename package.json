@@ -10,6 +10,7 @@
     "register": "node scripts/register-commands.js",
     "start": "wrangler dev",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:signature": "node scripts/test-signature.js",
     "build": "echo 'Build step complete - Worker ready for deployment'"
   },
   "dependencies": {
