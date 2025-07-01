@@ -643,17 +643,21 @@ const AutocompleteHandlers = {
     // Build choices with all Pokemon including forms
     const allPokemon = getAllPokemonWithForms(pokedex);
     const choices = [];
+    const seen = new Set();
     
     for (const p of allPokemon) {
       const baseName = p.names.English;
       const formName = p.formId && p.formId !== p.id ? p.formId.replace(/_/g, ' ') : '';
-      
+      let choiceName;
       if (formName) {
-        // Add both 'BaseName FormName' and 'FormName BaseName'
-        choices.push({ name: `${baseName} ${formName}`, value: `${baseName} ${formName}` });
-        choices.push({ name: `${formName} ${baseName}`, value: `${formName} ${baseName}` });
+        choiceName = `${baseName} ${formName}`;
       } else {
-        choices.push({ name: baseName, value: baseName });
+        choiceName = baseName;
+      }
+      // Only add if not already seen
+      if (!seen.has(choiceName.toLowerCase())) {
+        choices.push({ name: choiceName, value: choiceName });
+        seen.add(choiceName.toLowerCase());
       }
     }
 
