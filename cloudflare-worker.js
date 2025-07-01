@@ -294,6 +294,14 @@ async function handlePokemonCommand(options) {
     return { content: `Sorry, I couldn't find information for ${pokemonName}.` };
   }
 
+  // Find the base Pokemon (for assetForms lookup)
+  let basePokemon = pokemon;
+  if (pokemon.formId && pokedex) {
+    // Try to find the base by id
+    const found = pokedex.find(p => p.id === pokemon.id);
+    if (found) basePokemon = found;
+  }
+
   // Build types array
   const types = [pokemon.primaryType.names.English];
   if (pokemon.secondaryType) {
@@ -314,8 +322,28 @@ async function handlePokemonCommand(options) {
   description += `⚔️ **Attack**: ${pokemon.stats.attack}\n`;
   description += `🛡️ **Defense**: ${pokemon.stats.defense}\n`;
 
+  // Determine the best image for the form
+  let imageUrl = pokemon.assets?.image;
+  if (!imageUrl && basePokemon.assetForms && pokemon.formId) {
+    // Try to match form in assetForms
+    const formKey = pokemon.formId.replace(`${pokemon.id}_`, '').toUpperCase();
+    const assetForm = basePokemon.assetForms.find(f => {
+      // Match by form name or by form property
+      return (
+        (f.form && f.form.toUpperCase() === formKey) ||
+        (pokemon.names.English && f.form && pokemon.names.English.toLowerCase().includes(f.form.toLowerCase()))
+      );
+    });
+    if (assetForm && assetForm.image) {
+      imageUrl = assetForm.image;
+    }
+  }
+  if (!imageUrl && basePokemon.assets?.image) {
+    imageUrl = basePokemon.assets.image;
+  }
+
   const embed = EmbedUtils.createBaseEmbed(pokemon.names.English, CONFIG.COLORS.GREEN, description);
-  EmbedUtils.setImage(embed, pokemon.assets?.image);
+  EmbedUtils.setImage(embed, imageUrl);
 
   return { embeds: [embed] };
 }
