@@ -210,34 +210,33 @@ const EmbedUtils = {
   }
 };
 
-// Optimized Pokemon search with fuzzy matching and better form handling
-function findPokemon(pokedex, name) {
+// Enhanced Pokemon search with comprehensive form handling
+export function findPokemon(pokedex, name) {
   if (!pokedex) return null;
 
   const searchName = name.toLowerCase();
   console.log(`Searching for Pokemon: ${searchName}`);
 
+  // Get all Pokemon including forms for comprehensive search
+  const allPokemon = getAllPokemonWithForms(pokedex);
+
   // Try exact match first
-  let pokemon = pokedex.find(p => {
+  let pokemon = allPokemon.find(p => {
     const baseName = p.names.English.toLowerCase();
-    // Handle form names like "Giratina Origin", "Deoxys Defense", etc.
-    const fullFormName = p.formId ? 
-      `${p.names.English.toLowerCase()} ${p.formId.toLowerCase().replace(/_/g, ' ')}` : "";
-    const formName = p.formId ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+    const formName = p.formId && p.formId !== p.id ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+    const fullFormName = formName ? `${baseName} ${formName}` : "";
     
     return baseName === searchName || 
            formName === searchName ||
            fullFormName === searchName;
   });
 
-  // Fuzzy match if no exact match
+  // If no exact match, try fuzzy matching
   if (!pokemon) {
-    pokemon = pokedex.find(p => {
+    pokemon = allPokemon.find(p => {
       const baseName = p.names.English.toLowerCase();
-      // Include both the Pokemon name with form and just the form name in search
-      const fullFormName = p.formId ? 
-        `${p.names.English.toLowerCase()} ${p.formId.toLowerCase().replace(/_/g, ' ')}` : "";
-      const formName = p.formId ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+      const formName = p.formId && p.formId !== p.id ? p.formId.toLowerCase().replace(/_/g, ' ') : "";
+      const fullFormName = formName ? `${baseName} ${formName}` : "";
       
       return baseName.includes(searchName) || 
              formName.includes(searchName) ||
@@ -258,6 +257,27 @@ function getAllRaids(raidData) {
     ...(raidData.currentList.lvl3 || []),
     ...(raidData.currentList.lvl1 || [])
   ];
+}
+
+// Get all Pokemon including their forms for comprehensive search
+export function getAllPokemonWithForms(pokedex) {
+  if (!pokedex) return [];
+  
+  const allPokemon = [];
+  
+  for (const pokemon of pokedex) {
+    // Add the base Pokemon
+    allPokemon.push(pokemon);
+    
+    // Add region forms if they exist
+    if (pokemon.regionForms) {
+      for (const [formKey, formData] of Object.entries(pokemon.regionForms)) {
+        allPokemon.push(formData);
+      }
+    }
+  }
+  
+  return allPokemon;
 }
 
 // Handle Pokemon info command
@@ -283,6 +303,7 @@ async function handlePokemonCommand(options) {
   // Build description
   let description = `**${pokemon.names.English}**\n`;
   
+  // Check if this is a region form and show form info
   if (pokemon.formId && pokemon.formId !== pokemon.id) {
     description += `🔄 **Form**: ${pokemon.formId.replace(/_/g, " ")}\n`;
   }
@@ -567,11 +588,14 @@ const AutocompleteHandlers = {
     if (!pokedex) return [];
 
     const searchValue = focusedValue.toLowerCase();
-    // Build choices with both base and form names, and form first for forms
+    // Build choices with all Pokemon including forms
+    const allPokemon = getAllPokemonWithForms(pokedex);
     const choices = [];
-    for (const p of pokedex) {
+    
+    for (const p of allPokemon) {
       const baseName = p.names.English;
       const formName = p.formId && p.formId !== p.id ? p.formId.replace(/_/g, ' ') : '';
+      
       if (formName) {
         // Add both 'BaseName FormName' and 'FormName BaseName'
         choices.push({ name: `${baseName} ${formName}`, value: `${baseName} ${formName}` });
