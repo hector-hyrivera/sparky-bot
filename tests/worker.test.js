@@ -14,46 +14,63 @@ describe('Cloudflare Worker Tests', () => {
     expect(fs.existsSync(workerPath)).toBe(true);
   });
 
-  test('Worker file contains expected exports and methods', () => {
+  test('Worker file contains expected methods and features', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
-    expect(workerContent).toContain('export default');
-    expect(workerContent).toContain('async fetch(');
+    // Should contain handleEventsCommand and getEventsData
+    expect(workerContent).toMatch(/async\s+function\s+handleEventsCommand/);
+    expect(workerContent).toMatch(/async\s+function\s+getEventsData/);
+    // Should contain main request handler (look for verifyKey and Discord interaction handling)
+    expect(workerContent).toContain('verifyKey');
+    expect(workerContent).toMatch(/body\.type\s*===\s*1/);
+    expect(workerContent).toMatch(/body\.type\s*===\s*2/);
+    expect(workerContent).toMatch(/body\.type\s*===\s*4/);
   });
 
   test('Worker contains critical functions', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
-    expect(workerContent).toContain('async function getPokedex()');
-    expect(workerContent).toContain('async function getRaidBosses()');
-    expect(workerContent).toContain('function findPokemon(');
+    expect(workerContent).toMatch(/async\s+function\s+getPokedex/);
+    expect(workerContent).toMatch(/async\s+function\s+getRaidBosses/);
+    expect(workerContent).toMatch(/function\s+findPokemon\s*\(/);
+    // Should contain event color palette and embed utils
+    expect(workerContent).toMatch(/const\s+EVENT_TYPE_COLORS/);
+    expect(workerContent).toMatch(/const\s+EmbedUtils\s*=\s*\{/);
   });
 
   test('Worker handles required interaction types', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
     // Check for PING response (type 1)
-    expect(workerContent).toContain('if (body.type === 1)');
+    expect(workerContent).toMatch(/body\.type\s*===\s*1/);
     // Check for APPLICATION_COMMAND handler (type 2)
-    expect(workerContent).toContain('if (body.type === 2)');
+    expect(workerContent).toMatch(/body\.type\s*===\s*2/);
     // Check for autocomplete handler (type 4)
-    expect(workerContent).toContain('if (body.type === 4)');
+    expect(workerContent).toMatch(/body\.type\s*===\s*4/);
+    // Should handle event selection and summary logic
+    expect(workerContent).toMatch(/Select an event for details/);
   });
 
   test('Worker implements all required commands', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
     // Check for command handlers in the new structure
-    expect(workerContent).toContain('pokemon: handlePokemonCommand');
-    expect(workerContent).toContain('hundo: handleHundoCommand');
-    expect(workerContent).toContain('currentraids: handleCurrentRaidsCommand');
-    expect(workerContent).toContain('raidboss: handleRaidBossCommand');
+    expect(workerContent).toMatch(/pokemon:\s*handlePokemonCommand/);
+    expect(workerContent).toMatch(/hundo:\s*handleHundoCommand/);
+    expect(workerContent).toMatch(/currentraids:\s*handleCurrentRaidsCommand/);
+    expect(workerContent).toMatch(/raidboss:\s*handleRaidBossCommand/);
+    // Should contain events command
+    expect(workerContent).toMatch(/events:\s*handleEventsCommand/);
   });
 
   test('Worker contains optimized features', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
     // Check for new optimized features
-    expect(workerContent).toContain('const CONFIG = {');
-    expect(workerContent).toContain('class CacheManager');
-    expect(workerContent).toContain('const EmbedUtils = {');
-    expect(workerContent).toContain('const AutocompleteHandlers = {');
-    expect(workerContent).toContain('fetchWithValidation');
+    expect(workerContent).toMatch(/const\s+CONFIG\s*=\s*\{/);
+    expect(workerContent).toMatch(/class\s+CacheManager/);
+    expect(workerContent).toMatch(/const\s+EmbedUtils\s*=\s*\{/);
+    expect(workerContent).toMatch(/const\s+AutocompleteHandlers\s*=\s*\{/);
+    expect(workerContent).toMatch(/fetchWithValidation/);
+    // Should contain autocomplete for events
+    expect(workerContent).toMatch(/async\s+events\s*\(/);
+    // Should contain summary/details logic for events
+    expect(workerContent).toMatch(/Current & upcoming events:/);
   });
 
   test('Worker has proper error handling', () => {
