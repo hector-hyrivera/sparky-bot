@@ -16,9 +16,10 @@ const CONFIG = {
   },
   URLS: {
     POKEDEX: "https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json",
-    RAID_BOSSES: "https://pokemon-go-api.github.io/pokemon-go-api/api/raidboss.json",
+    RAID_BOSSES: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/refs/heads/data/raids.json",
     RESEARCH: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/research.json",
     EGGS: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/eggs.json",
+    EVENTS: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json",
     DEFAULT_IMAGE: "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
   },
   FOOTERS: {
@@ -137,14 +138,14 @@ async function getEggData() {
   return [];
 }
 
-// Fetch raid boss data
+// Fetch raid boss data (ScrapedDuck raids.json)
 async function getRaidBosses() {
   const cached = cache.get('raidBosses');
   if (cached) return cached;
 
   const result = await fetchWithValidation(
     CONFIG.URLS.RAID_BOSSES,
-    data => data && typeof data === 'object' && data.currentList
+    data => Array.isArray(data) && data.length > 0
   );
   
   if (result.success) {
@@ -152,7 +153,7 @@ async function getRaidBosses() {
     return result.data;
   }
   
-  return null;
+  return [];
 }
 
 // Utility functions for embed creation
@@ -270,14 +271,19 @@ export function findPokemon(pokedex, name) {
   return pokemon;
 }
 
-// Optimized raid collection
+// Optimized raid collection supporting new ScrapedDuck schema
 function getAllRaids(raidData) {
+  // New schema: raids.json is an array of raid entries
+  if (Array.isArray(raidData)) return raidData;
+
+  // Backward-compat: older schema with currentList
   if (!raidData?.currentList) return [];
-  
   return [
     ...(raidData.currentList.mega || []),
     ...(raidData.currentList.lvl5 || []),
+    ...(raidData.currentList.lvl4 || []),
     ...(raidData.currentList.lvl3 || []),
+    ...(raidData.currentList.lvl2 || []),
     ...(raidData.currentList.lvl1 || [])
   ];
 }
@@ -352,171 +358,165 @@ async function handlePokemonCommand(options) {
   return { embeds: [embed] };
 }
 
-// Handle Hundo command
+// Handle Hundo command (ScrapedDuck raids.json)
 async function handleHundoCommand(options) {
   const pokemonName = options.find(opt => opt.name === "pokemon")?.value?.toLowerCase();
   if (!pokemonName) {
     return { content: "Pokemon name is required." };
   }
 
-  const raidData = await getRaidBosses();
-  if (!raidData) {
+  const raids = await getRaidBosses();
+  if (!raids || raids.length === 0) {
     return { content: "Sorry, I couldn't fetch the raid data at the moment." };
   }
 
-  const allRaids = getAllRaids(raidData);
-  const pokemon = allRaids.find(p => p.names.English.toLowerCase() === pokemonName);
-
-  if (!pokemon) {
+  const boss = raids.find(r => (r.name || '').toLowerCase() === pokemonName);
+  if (!boss) {
     return { content: `Couldn't find ${pokemonName} in the current raid bosses.` };
   }
 
-  // Find the base Pokemon for asset lookup
-  let basePokemon = pokemon;
-  if (pokemon.formId && raidData.pokedex) {
-    const found = raidData.pokedex.find(p => p.id === pokemon.id);
-    if (found) basePokemon = found;
-  }
+  const cpNormal = boss.combatPower?.normal?.max;
+  const cpBoosted = boss.combatPower?.boosted?.max;
 
   const embed = EmbedUtils.createBaseEmbed(
-    `🏆 Perfect IV CP for ${pokemon.names.English}`,
+    `🏆 Perfect IV CP for ${boss.name}`,
     CONFIG.COLORS.GREEN
   );
-  
-  EmbedUtils.addField(embed, "🎯 Normal CP", `**${pokemon.cpRange[1]}**`, true);
-  EmbedUtils.addField(embed, "☀️ Weather Boosted CP", `**${pokemon.cpRangeBoost[1]}**`, true);
-  EmbedUtils.setImage(embed, getBestPokemonImage(pokemon, basePokemon));
+  if (cpNormal != null) EmbedUtils.addField(embed, "🎯 Normal CP", `**${cpNormal}**`, true);
+  if (cpBoosted != null) EmbedUtils.addField(embed, "☀️ Weather Boosted CP", `**${cpBoosted}**`, true);
+  if (boss.image) EmbedUtils.setImage(embed, boss.image);
+  EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
 
   return { embeds: [embed] };
 }
 
-// Handle Current Raids command with optimized embed creation
+// Handle Current Raids command (ScrapedDuck raids.json)
 async function handleCurrentRaidsCommand() {
-  const raidData = await getRaidBosses();
-  if (!raidData) {
+  const raids = await getRaidBosses();
+  if (!raids || raids.length === 0) {
     return { content: "Sorry, I couldn't fetch the raid data at the moment." };
   }
 
-  const embeds = [];
-  const raidTiers = [
-    { key: 'mega', title: '🔄 Mega Raids', color: CONFIG.COLORS.RED },
-    { key: 'lvl5', title: '⭐⭐⭐⭐⭐ Level 5 Raids', color: CONFIG.COLORS.ORANGE },
-    { key: 'lvl3', title: '⭐⭐⭐ Level 3 Raids', color: CONFIG.COLORS.BLUE },
-    { key: 'lvl1', title: '⭐ Level 1 Raids', color: CONFIG.COLORS.GREEN }
-  ];
+  // Group by tier
+  const groups = new Map();
+  for (const r of raids) {
+    const tier = r.tier || 'Other';
+    if (!groups.has(tier)) groups.set(tier, []);
+    groups.get(tier).push(r);
+  }
 
-  raidTiers.forEach(tier => {
-    const raidList = raidData.currentList[tier.key];
-    if (raidList?.length > 0) {
-      const embed = EmbedUtils.createBaseEmbed(tier.title, tier.color);
-      
-      raidList.forEach(pokemon => {
-        const field = EmbedUtils.createRaidPokemonField(pokemon);
-        embed.fields.push(field);
-      });
-      
-      // Find the base Pokemon for asset lookup
-      let basePokemon = raidList[0];
-      if (raidList[0]?.formId && raidData.pokedex) {
-        const found = raidData.pokedex.find(p => p.id === raidList[0].id);
-        if (found) basePokemon = found;
-      }
-      EmbedUtils.setThumbnail(embed, getBestPokemonImage(raidList[0], basePokemon));
-      embeds.push(embed);
-    }
+  // Order tiers: Mega, Tier 5, Tier 4, Tier 3, Tier 2, Tier 1, Other
+  const order = [
+    'Mega', 'Tier 5', 'Tier 4', 'Tier 3', 'Tier 2', 'Tier 1', 'Other'
+  ];
+  const colorForTier = (tier) => {
+    if (/mega/i.test(tier)) return CONFIG.COLORS.RED;
+    if (/5/.test(tier)) return CONFIG.COLORS.ORANGE;
+    if (/3/.test(tier)) return CONFIG.COLORS.BLUE;
+    if (/1/.test(tier)) return CONFIG.COLORS.GREEN;
+    return CONFIG.COLORS.DISCORD_BLUE;
+  };
+  const titleForTier = (tier) => {
+    if (/mega/i.test(tier)) return '🔄 Mega Raids';
+    if (/5/.test(tier)) return '⭐⭐⭐⭐⭐ Tier 5 Raids';
+    if (/4/.test(tier)) return '⭐⭐⭐⭐ Tier 4 Raids';
+    if (/3/.test(tier)) return '⭐⭐⭐ Tier 3 Raids';
+    if (/2/.test(tier)) return '⭐⭐ Tier 2 Raids';
+    if (/1/.test(tier)) return '⭐ Tier 1 Raids';
+    return `${tier} Raids`;
+  };
+
+  const embeds = [];
+  const sortedTiers = Array.from(groups.keys()).sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
   });
+
+  for (const tier of sortedTiers) {
+    const list = groups.get(tier);
+    if (!list || list.length === 0) continue;
+    const embed = EmbedUtils.createBaseEmbed(titleForTier(tier), colorForTier(tier));
+
+    for (const boss of list) {
+      const name = boss.name || 'Unknown';
+      const types = Array.isArray(boss.types)
+        ? boss.types.map(t => (typeof t === 'string' ? t : t.name)).filter(Boolean)
+        : [];
+      const cpNormal = boss.combatPower?.normal?.max;
+      const cpBoosted = boss.combatPower?.boosted?.max;
+      const shinyEmoji = boss.canBeShiny ? '✅' : '❌';
+      let value = '';
+      if (cpNormal != null) value += `🎯 Hundo CP: **${cpNormal}**`;
+      if (cpBoosted != null) value += `${value ? '\n' : ''}☀️ Boosted Hundo CP: **${cpBoosted}**`;
+      if (types.length) value += `${value ? '\n' : ''}🏷️ Types: ${types.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}`;
+      value += `${value ? '\n' : ''}✨ Shiny? ${shinyEmoji}`;
+      embed.fields.push({ name, value, inline: true });
+    }
+
+    const thumb = list[0]?.image;
+    if (thumb) EmbedUtils.setThumbnail(embed, thumb);
+    EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+    embeds.push(embed);
+  }
 
   return { embeds };
 }
 
-// Handle Raid Boss command
+// Handle Raid Boss command (ScrapedDuck raids.json)
 async function handleRaidBossCommand(options) {
   const bossName = options.find(opt => opt.name === "name")?.value;
   if (!bossName) {
     return { content: "Boss name is required." };
   }
 
-  const raidData = await getRaidBosses();
-  if (!raidData) {
+  const raids = await getRaidBosses();
+  if (!raids || raids.length === 0) {
     return { content: "Sorry, I couldn't fetch the raid data at the moment." };
   }
 
-  const allRaids = getAllRaids(raidData);
-  const boss = allRaids.find(p => p.names.English.toLowerCase() === bossName.toLowerCase());
-
+  const boss = raids.find(r => (r.name || '').toLowerCase() === bossName.toLowerCase());
   if (!boss) {
     return { content: `Couldn't find ${bossName} in the current raid bosses.` };
   }
 
-  // Determine raid level and color
-  const raidConfig = {
-    mega: { level: "Mega Raid", color: CONFIG.COLORS.RED },
-    lvl5: { level: "Level 5 Raid", color: CONFIG.COLORS.ORANGE },
-    lvl3: { level: "Level 3 Raid", color: CONFIG.COLORS.BLUE },
-    lvl1: { level: "Level 1 Raid", color: CONFIG.COLORS.GREEN }
-  };
+  // Determine color and level text from tier
+  const tier = boss.tier || '';
+  const color = /mega/i.test(tier) ? CONFIG.COLORS.RED
+    : /5/.test(tier) ? CONFIG.COLORS.ORANGE
+    : /3/.test(tier) ? CONFIG.COLORS.BLUE
+    : /1/.test(tier) ? CONFIG.COLORS.GREEN
+    : CONFIG.COLORS.DISCORD_BLUE;
+  const levelText = tier || 'Raid';
 
-  let config = raidConfig.lvl1; // default
-  for (const [key, value] of Object.entries(raidConfig)) {
-    if (raidData.currentList[key]?.includes(boss)) {
-      config = value;
-      break;
-    }
-  }
+  // Build description from new schema
+  const types = Array.isArray(boss.types)
+    ? boss.types.map(t => (typeof t === 'string' ? t : t.name)).filter(Boolean)
+    : [];
+  const cpNormal = boss.combatPower?.normal?.max;
+  const cpBoosted = boss.combatPower?.boosted?.max;
+  const weather = Array.isArray(boss.boostedWeather)
+    ? boss.boostedWeather.map(w => (typeof w === 'string' ? w : w.name))
+    : [];
 
-  // Build counters text
-  let countersText = "";
-  if (boss.counter) {
-    const sortedCounters = Object.entries(boss.counter)
-      .sort(([, a], [, b]) => b - a)
-      .map(([type, multiplier]) => `${type} (${multiplier}x)`);
-    countersText = sortedCounters.join(", ");
-  }
-
-  // Build description
-  let description = `**Types**: ${boss.types.join(", ")}\n\n`;
-  description += `🏆 **Perfect IV CP**: ${boss.cpRange[1]}\n`;
-  description += `☀️ **Perfect IV CP (Weather Boosted)**: ${boss.cpRangeBoost[1]}\n\n`;
-  
-  if (countersText) {
-    description += `⚔️ **Weak to**: ${countersText}\n\n`;
-  }
-  
-  if (boss.weather) {
-    description += `🌤️ **Boosted in**: ${boss.weather
-      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(", ")} weather\n\n`;
-  }
-  
-  description += `✨ **Shiny Available**: ${boss.shiny ? "Yes ✅" : "No ❌"}`;
-
-  // Find the base Pokemon for asset lookup
-  let basePokemon = boss;
-  if (boss.formId && raidData.pokedex) {
-    const found = raidData.pokedex.find(p => p.id === boss.id);
-    if (found) basePokemon = found;
-  }
+  let description = '';
+  if (types.length) description += `**Types**: ${types.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}\n\n`;
+  if (cpNormal != null) description += `🏆 **Perfect IV CP**: ${cpNormal}\n`;
+  if (cpBoosted != null) description += `☀️ **Perfect IV CP (Weather Boosted)**: ${cpBoosted}\n\n`;
+  if (weather.length) description += `🌤️ **Boosted in**: ${weather.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(', ')} weather\n\n`;
+  description += `✨ **Shiny Available**: ${boss.canBeShiny ? 'Yes ✅' : 'No ❌'}`;
 
   const mainEmbed = EmbedUtils.createBaseEmbed(
-    `${boss.names.English} - ${config.level}`,
-    config.color,
+    `${boss.name} - ${levelText}`,
+    color,
     description
   );
-  EmbedUtils.setImage(mainEmbed, getBestPokemonImage(boss, basePokemon));
-
-  const embeds = [mainEmbed];
-
-  // Add shiny embed if available
-  if (boss.shiny && boss.assets?.shinyImage) {
-    const shinyEmbed = EmbedUtils.createBaseEmbed(
-      `${boss.names.English} - Shiny Form`,
-      config.color
-    );
-    EmbedUtils.setImage(shinyEmbed, boss.assets.shinyImage);
-    embeds.push(shinyEmbed);
+  if (boss.image) {
+    EmbedUtils.setImage(mainEmbed, boss.image);
   }
+  EmbedUtils.setFooter(mainEmbed, CONFIG.FOOTERS.LEEK_DUCK);
 
-  return { embeds };
+  return { embeds: [mainEmbed] };
 }
 
 // Handle Research command
@@ -674,42 +674,46 @@ const AutocompleteHandlers = {
   },
 
   async raidboss(focusedValue) {
-    const raidData = await getRaidBosses();
-    if (!raidData) return [];
+    const raids = await getRaidBosses();
+    if (!raids || raids.length === 0) return [];
 
-    const allRaids = getAllRaids(raidData);
+    const allRaids = getAllRaids(raids);
     const searchValue = focusedValue.toLowerCase();
     
+    const toChoice = r => ({ name: r.name, value: r.name });
+
     if (!searchValue) {
       return allRaids
         .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-        .map(p => ({ name: p.names.English, value: p.names.English }));
+        .map(toChoice);
     }
 
     return allRaids
-      .filter(p => p.names.English.toLowerCase().includes(searchValue))
+      .filter(r => (r.name || '').toLowerCase().includes(searchValue))
       .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-      .map(p => ({ name: p.names.English, value: p.names.English }));
+      .map(toChoice);
   },
 
   async hundo(focusedValue) {
     // Hundo uses the same logic as raidboss since it's for raid bosses
-    const raidData = await getRaidBosses();
-    if (!raidData) return [];
+    const raids = await getRaidBosses();
+    if (!raids || raids.length === 0) return [];
 
-    const allRaids = getAllRaids(raidData);
+    const allRaids = getAllRaids(raids);
     const searchValue = focusedValue.toLowerCase();
     
+    const toChoice = r => ({ name: r.name, value: r.name });
+
     if (!searchValue) {
       return allRaids
         .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-        .map(p => ({ name: p.names.English, value: p.names.English }));
+        .map(toChoice);
     }
 
     return allRaids
-      .filter(p => p.names.English.toLowerCase().includes(searchValue))
+      .filter(r => (r.name || '').toLowerCase().includes(searchValue))
       .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
-      .map(p => ({ name: p.names.English, value: p.names.English }));
+      .map(toChoice);
   },
 
   async research(focusedValue) {
@@ -748,6 +752,334 @@ const AutocompleteHandlers = {
     }
   }
 };
+
+// ---- Event announcements (ScrapedDuck events watcher) ----
+const EVENTS_KV_KEYS = {
+  postedIds: 'events_posted_ids',
+  channel: 'events_channel_id'
+};
+
+const RAIDS_KV_KEYS = {
+  lastPostedKey: 'raids_last_posted_key',
+  channel: 'raids_channel_id'
+};
+
+async function getEventsData() {
+  const result = await fetchWithValidation(
+    CONFIG.URLS.EVENTS,
+    data => Array.isArray(data)
+  );
+  if (result.success) return result.data;
+  console.error('Failed to fetch events data:', result.error);
+  return [];
+}
+
+async function getStoredPostedEventIds(env) {
+  if (!env.EVENTS_KV) return null; // KV not configured
+  try {
+    const raw = await env.EVENTS_KV.get(EVENTS_KV_KEYS.postedIds);
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch (e) {
+    console.error('Error reading posted event IDs from KV:', e);
+    return new Set();
+  }
+}
+
+async function setStoredPostedEventIds(env, idSet) {
+  if (!env.EVENTS_KV) return; // KV not configured
+  try {
+    const arr = Array.from(idSet);
+    await env.EVENTS_KV.put(EVENTS_KV_KEYS.postedIds, JSON.stringify(arr));
+  } catch (e) {
+    console.error('Error writing posted event IDs to KV:', e);
+  }
+}
+
+async function getConfiguredEventsChannelId(env) {
+  try {
+    // Prefer KV-configured channel ID; fallback to env var
+    const kvChannel = env.EVENTS_KV ? await env.EVENTS_KV.get(EVENTS_KV_KEYS.channel) : null;
+    return kvChannel || env.EVENTS_CHANNEL_ID || null;
+  } catch (e) {
+    console.error('Error retrieving configured events channel ID:', e);
+    return env.EVENTS_CHANNEL_ID || null;
+  }
+}
+
+async function sendEventImageToChannel(env, channelId, eventObj) {
+  const token = env.DISCORD_TOKEN;
+  if (!token) throw new Error('DISCORD_TOKEN not configured');
+  if (!channelId) throw new Error('Channel ID not provided');
+  if (!eventObj?.image) throw new Error('Event object missing image URL');
+
+  const embed = {
+    title: eventObj.name || 'New Event',
+    url: eventObj.link || undefined,
+    image: { url: eventObj.image },
+    footer: { text: CONFIG.FOOTERS.LEEK_DUCK }
+  };
+
+  const resp = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bot ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      embeds: [embed],
+      allowed_mentions: { parse: [] }
+    })
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Discord API error ${resp.status}: ${text}`);
+  }
+}
+
+async function sendEmbedsToChannel(env, channelId, embeds) {
+  const token = env.DISCORD_TOKEN;
+  if (!token) throw new Error('DISCORD_TOKEN not configured');
+  if (!channelId) throw new Error('Channel ID not provided');
+  if (!Array.isArray(embeds) || embeds.length === 0) return;
+
+  // Discord allows up to 10 embeds per message
+  const chunks = [];
+  for (let i = 0; i < embeds.length; i += 10) {
+    chunks.push(embeds.slice(i, i + 10));
+  }
+
+  for (const chunk of chunks) {
+    const resp = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bot ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ embeds: chunk, allowed_mentions: { parse: [] } })
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Discord API error ${resp.status}: ${text}`);
+    }
+  }
+}
+
+async function checkAndAnnounceNewEvents(env) {
+  // Ensure required config is present
+  if (!env.DISCORD_TOKEN) {
+    console.warn('Skipping events check: DISCORD_TOKEN not configured.');
+    return;
+  }
+
+  const channelId = await getConfiguredEventsChannelId(env);
+  if (!channelId) {
+    console.warn('Skipping events check: events channel is not configured.');
+    return;
+  }
+
+  if (!env.EVENTS_KV) {
+    console.warn('Skipping events check: EVENTS_KV binding is not configured; cannot track posted events safely.');
+    return;
+  }
+
+  const events = await getEventsData();
+  if (!events.length) {
+    console.log('No events data available from source.');
+    return;
+  }
+
+  let postedSet = await getStoredPostedEventIds(env);
+  const isFirstRun = (postedSet === null);
+  if (!postedSet) postedSet = new Set();
+
+  const currentIds = new Set(events.map(e => e.eventID));
+  const newEvents = events.filter(e => e?.eventID && !postedSet.has(e.eventID));
+
+  if (isFirstRun) {
+    // On first run: announce only events that start in the future, then initialize state
+    const nowMs = Date.now();
+    const futureEvents = events.filter(e => {
+      if (!e?.start) return false;
+      const t = Date.parse(e.start);
+      return !Number.isNaN(t) && t > nowMs;
+    });
+
+    if (futureEvents.length > 0) {
+      console.log(`First run: announcing ${futureEvents.length} upcoming event(s) before initializing state...`);
+      for (const ev of futureEvents) {
+        try {
+          if (ev.image) {
+            await sendEventImageToChannel(env, channelId, ev);
+          } else {
+            console.warn(`Event ${ev.eventID} has no image URL; skipping.`);
+          }
+        } catch (error) {
+          console.error('Error posting upcoming event on first run:', ev?.eventID, error);
+        }
+      }
+    } else {
+      console.log('First run: no upcoming events to announce.');
+    }
+
+    // Initialize posted set with all current events to prevent backfill spam
+    await setStoredPostedEventIds(env, currentIds);
+    console.log(`Initialized events KV with ${currentIds.size} event IDs.`);
+    return;
+  }
+
+  if (newEvents.length === 0) {
+    console.log('No new events detected.');
+    return;
+  }
+
+  console.log(`Detected ${newEvents.length} new event(s). Posting to channel ${channelId}...`);
+
+  for (const ev of newEvents) {
+    try {
+      if (ev.image) {
+        await sendEventImageToChannel(env, channelId, ev);
+        postedSet.add(ev.eventID);
+      } else {
+        console.warn(`Event ${ev.eventID} has no image URL; skipping.`);
+      }
+    } catch (error) {
+      console.error('Error posting new event:', ev?.eventID, error);
+    }
+  }
+
+  await setStoredPostedEventIds(env, postedSet);
+}
+
+// Permission helper
+function hasAdminPermission(body) {
+  try {
+    const permsStr = body?.member?.permissions || '0';
+    const perms = BigInt(permsStr);
+    const ADMINISTRATOR = 0x8n;
+    const MANAGE_GUILD = 0x20n;
+    return (perms & ADMINISTRATOR) !== 0n || (perms & MANAGE_GUILD) !== 0n;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function getConfiguredRaidsChannelId(env) {
+  try {
+    const kvChannel = env.EVENTS_KV ? await env.EVENTS_KV.get(RAIDS_KV_KEYS.channel) : null;
+    return kvChannel || env.RAIDS_CHANNEL_ID || null;
+  } catch (e) {
+    console.error('Error retrieving configured raids channel ID:', e);
+    return env.RAIDS_CHANNEL_ID || null;
+  }
+}
+
+// Slash command: /eventschannel [channel]
+async function handleEventsChannelCommand(options, body, env) {
+  const channelOpt = options.find(opt => opt.name === 'channel');
+  if (channelOpt) {
+    const channelId = String(channelOpt.value);
+    if (!env.EVENTS_KV) {
+      return {
+        content: 'Error: EVENTS_KV is not configured in this Worker. Please configure a KV namespace binding named "EVENTS_KV" to store settings.',
+        flags: 64
+      };
+    }
+    await env.EVENTS_KV.put(EVENTS_KV_KEYS.channel, channelId);
+    return { content: `Events channel set to <#${channelId}>.`, flags: 64 };
+  } else {
+    const current = await getConfiguredEventsChannelId(env);
+    if (current) {
+      return { content: `Current events channel: <#${current}>`, flags: 64 };
+    }
+    return { content: 'Events channel is not set. Provide a channel option or configure EVENTS_CHANNEL_ID.', flags: 64 };
+  }
+}
+
+// Slash command: /raidschannel [channel]
+async function handleRaidsChannelCommand(options, body, env) {
+  const channelOpt = options.find(opt => opt.name === 'channel');
+  if (channelOpt) {
+    const channelId = String(channelOpt.value);
+    if (!env.EVENTS_KV) {
+      return {
+        content: 'Error: EVENTS_KV is not configured. Please bind a KV namespace named "EVENTS_KV" to store settings.',
+        flags: 64
+      };
+    }
+    await env.EVENTS_KV.put(RAIDS_KV_KEYS.channel, channelId);
+    return { content: `Raids channel set to <#${channelId}>.`, flags: 64 };
+  } else {
+    const current = await getConfiguredRaidsChannelId(env);
+    if (current) {
+      return { content: `Current raids channel: <#${current}>`, flags: 64 };
+    }
+    return { content: 'Raids channel is not set. Provide a channel option or configure RAIDS_CHANNEL_ID.', flags: 64 };
+  }
+}
+
+// Slash command: /eventsrun
+async function handleEventsRunCommand(options, body, env) {
+  // Restrict to server admins / manage guild
+  if (!hasAdminPermission(body)) {
+    return { content: 'You need Administrator or Manage Server permissions to run this command.', flags: 64 };
+  }
+  try {
+    await checkAndAnnounceNewEvents(env);
+    return { content: 'Triggered events check. Check this channel for announcements and Worker logs for details.', flags: 64 };
+  } catch (e) {
+    console.error('Error during /eventsrun:', e);
+    return { content: 'Failed to run events check. See logs for details.', flags: 64 };
+  }
+}
+
+async function postWeeklyRaids(env) {
+  // Ensure config
+  if (!env.DISCORD_TOKEN) {
+    console.warn('Skipping raids weekly post: DISCORD_TOKEN not configured.');
+    return;
+  }
+  const channelId = await getConfiguredRaidsChannelId(env);
+  if (!channelId) {
+    console.warn('Skipping raids weekly post: raids channel is not configured.');
+    return;
+  }
+  if (!env.EVENTS_KV) {
+    console.warn('Skipping raids weekly post: EVENTS_KV not configured; cannot track last post.');
+    return;
+  }
+
+  // Prevent duplicate postings within the same day key
+  const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  try {
+    const lastKey = await env.EVENTS_KV.get(RAIDS_KV_KEYS.lastPostedKey);
+    if (lastKey === todayKey) {
+      console.log('Raids weekly post already sent today; skipping.');
+      return;
+    }
+  } catch (e) {
+    console.error('Error reading last raids post key:', e);
+  }
+
+  // Build embeds from the same logic as /currentraids
+  const result = await handleCurrentRaidsCommand();
+  const embeds = result?.embeds || [];
+  if (!embeds.length) {
+    console.warn('No raids embeds to send.');
+    return;
+  }
+
+  try {
+    await sendEmbedsToChannel(env, channelId, embeds);
+    await env.EVENTS_KV.put(RAIDS_KV_KEYS.lastPostedKey, todayKey);
+    console.log(`Posted raids summary to channel ${channelId} with ${embeds.length} embed(s).`);
+  } catch (e) {
+    console.error('Error posting raids summary:', e);
+  }
+}
 
 // Main worker handler
 export default {
@@ -871,11 +1203,14 @@ export default {
           currentraids: handleCurrentRaidsCommand,
           raidboss: handleRaidBossCommand,
           research: handleResearchCommand,
-          egg: handleEggCommand
+          egg: handleEggCommand,
+          eventschannel: handleEventsChannelCommand,
+          raidschannel: handleRaidsChannelCommand,
+          eventsrun: handleEventsRunCommand
         };
         const handler = commandHandlers[name.toLowerCase()];
         const responseData = handler 
-          ? await handler(options)
+          ? await handler(options, body, env)
           : { content: "Unknown command" };
         return new Response(
           JSON.stringify({
@@ -901,5 +1236,18 @@ export default {
       JSON.stringify({ error: 'Unsupported interaction type' }),
       { headers: { 'Content-Type': 'application/json' }, status: 400 }
     );
+  },
+  async scheduled(event, env, ctx) {
+    try {
+      // Always run events watcher on schedule
+      await checkAndAnnounceNewEvents(env);
+
+      // If this invocation is from our weekly raids cron, post the raids summary
+      if (event?.cron === '0 17 * * TUE') {
+        await postWeeklyRaids(env);
+      }
+    } catch (e) {
+      console.error('Scheduled event error:', e);
+    }
   }
 };

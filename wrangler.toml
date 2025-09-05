@@ -3,7 +3,27 @@ compatibility_date = "2024-09-23"
 main = "cloudflare-worker.js"
 compatibility_flags = ["nodejs_compat"]
 
+# Cron trigger: check for new events every 30 minutes
+[triggers]
+crons = ["*/30 * * * *", "0 17 * * TUE"]
+
 # Bind environment variables
 [vars]
 # CLIENT_ID, DISCORD_TOKEN, and PUBLIC_KEY will be set in the Cloudflare dashboard
 # or via wrangler secrets commands 
+# Optionally, set a default EVENTS_CHANNEL_ID (can also be set via /eventschannel)
+# EVENTS_CHANNEL_ID = ""
+
+# Note: To enable event announcements persistence and channel configuration,
+# bind a KV namespace named EVENTS_KV to this worker. Example:
+# [[kv_namespaces]]
+# binding = "EVENTS_KV"
+# id = "<your_production_kv_id>"
+# preview_id = "<your_preview_kv_id>"
+
+# Active KV binding for events watcher
+[[kv_namespaces]]
+binding = "EVENTS_KV"
+id = "65c749600d6f4a8d913b7ce698b98348"
+preview_id = "2c96889024944bf8a324c334f9412494"
+
