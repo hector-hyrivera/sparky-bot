@@ -1,6 +1,6 @@
 # Terms of Service for Sparky Bot
 
-Last Updated: [Current Date]
+Last Updated: 9/4/2025
 
 ## 1. Acceptance of Terms
 
