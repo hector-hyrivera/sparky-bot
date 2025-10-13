@@ -14,7 +14,7 @@
     "build": "echo 'Build step complete - Worker ready for deployment'"
   },
   "dependencies": {
-    "discord-interactions": "^4.3.0"
+    "discord-interactions": "^4.4.0"
   },
   "devDependencies": {
     "dotenv": "^17.2.2",
