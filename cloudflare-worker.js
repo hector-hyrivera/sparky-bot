@@ -753,91 +753,11 @@ const AutocompleteHandlers = {
   }
 };
 
-// ---- Event announcements (ScrapedDuck events watcher) ----
-const EVENTS_KV_KEYS = {
-  postedIds: 'events_posted_ids',
-  channel: 'events_channel_id'
-};
-
+// ---- Weekly Raids Summary ----
 const RAIDS_KV_KEYS = {
   lastPostedKey: 'raids_last_posted_key',
   channel: 'raids_channel_id'
 };
-
-async function getEventsData() {
-  const result = await fetchWithValidation(
-    CONFIG.URLS.EVENTS,
-    data => Array.isArray(data)
-  );
-  if (result.success) return result.data;
-  console.error('Failed to fetch events data:', result.error);
-  return [];
-}
-
-async function getStoredPostedEventIds(env) {
-  if (!env.EVENTS_KV) return null; // KV not configured
-  try {
-    const raw = await env.EVENTS_KV.get(EVENTS_KV_KEYS.postedIds);
-    if (!raw) return null;
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch (e) {
-    console.error('Error reading posted event IDs from KV:', e);
-    return new Set();
-  }
-}
-
-async function setStoredPostedEventIds(env, idSet) {
-  if (!env.EVENTS_KV) return; // KV not configured
-  try {
-    const arr = Array.from(idSet);
-    await env.EVENTS_KV.put(EVENTS_KV_KEYS.postedIds, JSON.stringify(arr));
-  } catch (e) {
-    console.error('Error writing posted event IDs to KV:', e);
-  }
-}
-
-async function getConfiguredEventsChannelId(env) {
-  try {
-    // Prefer KV-configured channel ID; fallback to env var
-    const kvChannel = env.EVENTS_KV ? await env.EVENTS_KV.get(EVENTS_KV_KEYS.channel) : null;
-    return kvChannel || env.EVENTS_CHANNEL_ID || null;
-  } catch (e) {
-    console.error('Error retrieving configured events channel ID:', e);
-    return env.EVENTS_CHANNEL_ID || null;
-  }
-}
-
-async function sendEventImageToChannel(env, channelId, eventObj) {
-  const token = env.DISCORD_TOKEN;
-  if (!token) throw new Error('DISCORD_TOKEN not configured');
-  if (!channelId) throw new Error('Channel ID not provided');
-  if (!eventObj?.image) throw new Error('Event object missing image URL');
-
-  const embed = {
-    title: eventObj.name || 'New Event',
-    url: eventObj.link || undefined,
-    image: { url: eventObj.image },
-    footer: { text: CONFIG.FOOTERS.LEEK_DUCK }
-  };
-
-  const resp = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bot ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      embeds: [embed],
-      allowed_mentions: { parse: [] }
-    })
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Discord API error ${resp.status}: ${text}`);
-  }
-}
 
 async function sendEmbedsToChannel(env, channelId, embeds) {
   const token = env.DISCORD_TOKEN;
@@ -868,92 +788,6 @@ async function sendEmbedsToChannel(env, channelId, embeds) {
   }
 }
 
-async function checkAndAnnounceNewEvents(env) {
-  // Ensure required config is present
-  if (!env.DISCORD_TOKEN) {
-    console.warn('Skipping events check: DISCORD_TOKEN not configured.');
-    return;
-  }
-
-  const channelId = await getConfiguredEventsChannelId(env);
-  if (!channelId) {
-    console.warn('Skipping events check: events channel is not configured.');
-    return;
-  }
-
-  if (!env.EVENTS_KV) {
-    console.warn('Skipping events check: EVENTS_KV binding is not configured; cannot track posted events safely.');
-    return;
-  }
-
-  const events = await getEventsData();
-  if (!events.length) {
-    console.log('No events data available from source.');
-    return;
-  }
-
-  let postedSet = await getStoredPostedEventIds(env);
-  const isFirstRun = (postedSet === null);
-  if (!postedSet) postedSet = new Set();
-
-  const currentIds = new Set(events.map(e => e.eventID));
-  const newEvents = events.filter(e => e?.eventID && !postedSet.has(e.eventID));
-
-  if (isFirstRun) {
-    // On first run: announce only events that start in the future, then initialize state
-    const nowMs = Date.now();
-    const futureEvents = events.filter(e => {
-      if (!e?.start) return false;
-      const t = Date.parse(e.start);
-      return !Number.isNaN(t) && t > nowMs;
-    });
-
-    if (futureEvents.length > 0) {
-      console.log(`First run: announcing ${futureEvents.length} upcoming event(s) before initializing state...`);
-      for (const ev of futureEvents) {
-        try {
-          if (ev.image) {
-            await sendEventImageToChannel(env, channelId, ev);
-          } else {
-            console.warn(`Event ${ev.eventID} has no image URL; skipping.`);
-          }
-        } catch (error) {
-          console.error('Error posting upcoming event on first run:', ev?.eventID, error);
-        }
-      }
-    } else {
-      console.log('First run: no upcoming events to announce.');
-    }
-
-    // Initialize posted set with all current events to prevent backfill spam
-    await setStoredPostedEventIds(env, currentIds);
-    console.log(`Initialized events KV with ${currentIds.size} event IDs.`);
-    return;
-  }
-
-  if (newEvents.length === 0) {
-    console.log('No new events detected.');
-    return;
-  }
-
-  console.log(`Detected ${newEvents.length} new event(s). Posting to channel ${channelId}...`);
-
-  for (const ev of newEvents) {
-    try {
-      if (ev.image) {
-        await sendEventImageToChannel(env, channelId, ev);
-        postedSet.add(ev.eventID);
-      } else {
-        console.warn(`Event ${ev.eventID} has no image URL; skipping.`);
-      }
-    } catch (error) {
-      console.error('Error posting new event:', ev?.eventID, error);
-    }
-  }
-
-  await setStoredPostedEventIds(env, postedSet);
-}
-
 // Permission helper
 function hasAdminPermission(body) {
   try {
@@ -977,28 +811,6 @@ async function getConfiguredRaidsChannelId(env) {
   }
 }
 
-// Slash command: /eventschannel [channel]
-async function handleEventsChannelCommand(options, body, env) {
-  const channelOpt = options.find(opt => opt.name === 'channel');
-  if (channelOpt) {
-    const channelId = String(channelOpt.value);
-    if (!env.EVENTS_KV) {
-      return {
-        content: 'Error: EVENTS_KV is not configured in this Worker. Please configure a KV namespace binding named "EVENTS_KV" to store settings.',
-        flags: 64
-      };
-    }
-    await env.EVENTS_KV.put(EVENTS_KV_KEYS.channel, channelId);
-    return { content: `Events channel set to <#${channelId}>.`, flags: 64 };
-  } else {
-    const current = await getConfiguredEventsChannelId(env);
-    if (current) {
-      return { content: `Current events channel: <#${current}>`, flags: 64 };
-    }
-    return { content: 'Events channel is not set. Provide a channel option or configure EVENTS_CHANNEL_ID.', flags: 64 };
-  }
-}
-
 // Slash command: /raidschannel [channel]
 async function handleRaidsChannelCommand(options, body, env) {
   const channelOpt = options.find(opt => opt.name === 'channel');
@@ -1018,21 +830,6 @@ async function handleRaidsChannelCommand(options, body, env) {
       return { content: `Current raids channel: <#${current}>`, flags: 64 };
     }
     return { content: 'Raids channel is not set. Provide a channel option or configure RAIDS_CHANNEL_ID.', flags: 64 };
-  }
-}
-
-// Slash command: /eventsrun
-async function handleEventsRunCommand(options, body, env) {
-  // Restrict to server admins / manage guild
-  if (!hasAdminPermission(body)) {
-    return { content: 'You need Administrator or Manage Server permissions to run this command.', flags: 64 };
-  }
-  try {
-    await checkAndAnnounceNewEvents(env);
-    return { content: 'Triggered events check. Check this channel for announcements and Worker logs for details.', flags: 64 };
-  } catch (e) {
-    console.error('Error during /eventsrun:', e);
-    return { content: 'Failed to run events check. See logs for details.', flags: 64 };
   }
 }
 
@@ -1204,9 +1001,7 @@ export default {
           raidboss: handleRaidBossCommand,
           research: handleResearchCommand,
           egg: handleEggCommand,
-          eventschannel: handleEventsChannelCommand,
-          raidschannel: handleRaidsChannelCommand,
-          eventsrun: handleEventsRunCommand
+          raidschannel: handleRaidsChannelCommand
         };
         const handler = commandHandlers[name.toLowerCase()];
         const responseData = handler 
@@ -1239,9 +1034,6 @@ export default {
   },
   async scheduled(event, env, ctx) {
     try {
-      // Always run events watcher on schedule
-      await checkAndAnnounceNewEvents(env);
-
       // If this invocation is from our weekly raids cron, post the raids summary
       if (event?.cron === '0 17 * * TUE') {
         await postWeeklyRaids(env);

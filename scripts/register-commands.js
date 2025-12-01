@@ -75,18 +75,6 @@ const commands = [
     ]
   },
   {
-    name: "eventschannel",
-    description: "Get or set the channel for event announcements",
-    options: [
-      {
-        name: "channel",
-        description: "Channel to post new event images",
-        type: 7, // CHANNEL
-        required: false
-      }
-    ]
-  },
-  {
     name: "raidschannel",
     description: "Get or set the channel for weekly raids summary",
     options: [
@@ -97,10 +85,6 @@ const commands = [
         required: false
       }
     ]
-  },
-  {
-    name: "eventsrun",
-    description: "Manually trigger the events check (admin only)"
   }
 ];
 

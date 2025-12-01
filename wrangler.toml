@@ -3,9 +3,9 @@ compatibility_date = "2024-09-23"
 main = "cloudflare-worker.js"
 compatibility_flags = ["nodejs_compat"]
 
-# Cron trigger: check for new events every 30 minutes
+# Cron trigger: post weekly raids summary every Tuesday at 5 PM UTC
 [triggers]
-crons = ["*/30 * * * *", "0 17 * * TUE"]
+crons = ["0 17 * * TUE"]
 
 # Bind environment variables
 [vars]
