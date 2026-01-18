@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run register:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(gh api:*)",
+      "Bash(pnpm why:*)",
+      "Bash(npm ls:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
