@@ -20,7 +20,7 @@
     "dotenv": "^17.2.3",
     "jest": "^30.2.0",
     "node-fetch": "^3.3.2",
-    "wrangler": "^4.59.2"
+    "wrangler": "^4.61.1"
   },
   "jest": {
     "transform": {},
