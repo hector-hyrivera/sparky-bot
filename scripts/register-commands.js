@@ -82,7 +82,7 @@ const commands = [
         name: "member",
         description: "Specific member to look up (boss, leader, or grunt)",
         type: 3, // STRING
-        required: false,
+        required: true,
         autocomplete: true
       }
     ]

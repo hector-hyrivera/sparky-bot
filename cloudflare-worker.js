@@ -707,37 +707,10 @@ async function handleRocketCommand(options) {
   }
 
   const memberName = options.find(opt => opt.name === "member")?.value;
-
   if (!memberName) {
-    // Overview: list all members
-    const embed = EmbedUtils.createBaseEmbed(
-      "Team GO Rocket Lineups",
-      CONFIG.COLORS.RED,
-      "All current Team GO Rocket lineups:"
-    );
-    EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
-
-    for (const lineup of lineups.slice(0, 25)) {
-      const formatSlot = (pokemon) => pokemon.map(p => {
-        let text = p.name;
-        if (p.isEncounter) text += ' \u{1F4E6}';
-        if (p.canBeShiny) text += ' \u2728';
-        return text;
-      }).join(' / ');
-
-      let value = `**${lineup.title}**`;
-      if (lineup.type) value += `\nType: ${lineup.type}`;
-      const slots = [lineup.firstPokemon, lineup.secondPokemon, lineup.thirdPokemon];
-      slots.forEach((slot, i) => {
-        if (slot?.length) value += `\nSlot ${i + 1}: ${formatSlot(slot)}`;
-      });
-      EmbedUtils.addField(embed, lineup.name, value, true);
-    }
-
-    return { embeds: [embed] };
+    return { content: "Member name is required." };
   }
 
-  // Detailed view for a specific member
   const lineup = lineups.find(l => l.name.toLowerCase() === memberName.toLowerCase());
   if (!lineup) {
     return { content: `Couldn't find a Team GO Rocket lineup for "${memberName}".` };
@@ -748,6 +721,8 @@ async function handleRocketCommand(options) {
     CONFIG.COLORS.RED
   );
   EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+
+  EmbedUtils.addField(embed, "Legend", "\u{1F4E6} Catchable \u2014 \u2728 Shiny available");
 
   const slotLabels = [
     { key: 'firstPokemon', label: 'Slot 1' },
