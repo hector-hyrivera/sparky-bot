@@ -706,10 +706,10 @@ async function handleRocketCommand(options) {
     return { content: "Sorry, I couldn't fetch Team GO Rocket lineup data at the moment." };
   }
 
-  const leaderName = options.find(opt => opt.name === "leader")?.value;
+  const memberName = options.find(opt => opt.name === "member")?.value;
 
-  if (!leaderName) {
-    // Overview: list all leaders/grunts
+  if (!memberName) {
+    // Overview: list all members
     const embed = EmbedUtils.createBaseEmbed(
       "Team GO Rocket Lineups",
       CONFIG.COLORS.RED,
@@ -733,10 +733,10 @@ async function handleRocketCommand(options) {
     return { embeds: [embed] };
   }
 
-  // Detailed view for a specific leader/grunt
-  const lineup = lineups.find(l => l.name.toLowerCase() === leaderName.toLowerCase());
+  // Detailed view for a specific member
+  const lineup = lineups.find(l => l.name.toLowerCase() === memberName.toLowerCase());
   if (!lineup) {
-    return { content: `Couldn't find a Team GO Rocket lineup for "${leaderName}".` };
+    return { content: `Couldn't find a Team GO Rocket lineup for "${memberName}".` };
   }
 
   const embed = EmbedUtils.createBaseEmbed(

@@ -79,8 +79,8 @@ const commands = [
     description: "View Team GO Rocket lineups and catchable Pokemon",
     options: [
       {
-        name: "leader",
-        description: "Specific leader or grunt to look up",
+        name: "member",
+        description: "Specific member to look up (boss, leader, or grunt)",
         type: 3, // STRING
         required: false,
         autocomplete: true
