@@ -25,6 +25,8 @@ describe('Cloudflare Worker Tests', () => {
     expect(workerContent).toContain('async function getPokedex()');
     expect(workerContent).toContain('async function getRaidBosses()');
     expect(workerContent).toContain('function findPokemon(');
+    expect(workerContent).toContain('async function getRocketLineups()');
+    expect(workerContent).toContain('async function getPromoCodes()');
   });
 
   test('Worker handles required interaction types', () => {
@@ -39,16 +41,22 @@ describe('Cloudflare Worker Tests', () => {
 
   test('Worker implements all required commands', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
-    // Check for command handlers in the new structure
     expect(workerContent).toContain('pokemon: handlePokemonCommand');
     expect(workerContent).toContain('hundo: handleHundoCommand');
     expect(workerContent).toContain('currentraids: handleCurrentRaidsCommand');
     expect(workerContent).toContain('raidboss: handleRaidBossCommand');
+    expect(workerContent).toContain('rocket: handleRocketCommand');
+    expect(workerContent).toContain('promocodes: handlePromoCodesCommand');
+  });
+
+  test('Worker contains new command handler functions', () => {
+    const workerContent = fs.readFileSync(workerPath, 'utf8');
+    expect(workerContent).toContain('async function handleRocketCommand(');
+    expect(workerContent).toContain('async function handlePromoCodesCommand(');
   });
 
   test('Worker contains optimized features', () => {
     const workerContent = fs.readFileSync(workerPath, 'utf8');
-    // Check for new optimized features
     expect(workerContent).toContain('const CONFIG = {');
     expect(workerContent).toContain('class CacheManager');
     expect(workerContent).toContain('const EmbedUtils = {');
@@ -62,4 +70,25 @@ describe('Cloudflare Worker Tests', () => {
     expect(workerContent).toContain('catch (error)');
     expect(workerContent).toContain('console.error');
   });
-}); 
+
+  test('Worker uses new ScrapedDuck fork for all endpoints', () => {
+    const workerContent = fs.readFileSync(workerPath, 'utf8');
+    // No remaining references to bigfoott/ScrapedDuck
+    expect(workerContent).not.toContain('bigfoott/ScrapedDuck');
+    // All ScrapedDuck URLs point to the new fork
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/raids.json');
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/research.json');
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/eggs.json');
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/events.json');
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/rocketLineups.json');
+    expect(workerContent).toContain('hector-hyrivera/ScrapedDuck/data/promoCodes.json');
+  });
+
+  test('Worker uses new research data schema with tasks property', () => {
+    const workerContent = fs.readFileSync(workerPath, 'utf8');
+    // Research fetcher validates new object schema
+    expect(workerContent).toContain('data && Array.isArray(data.tasks)');
+    // Research handler accesses tasks from data object
+    expect(workerContent).toContain('researchData?.tasks');
+  });
+});

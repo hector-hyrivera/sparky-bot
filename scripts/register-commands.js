@@ -75,6 +75,23 @@ const commands = [
     ]
   },
   {
+    name: "rocket",
+    description: "View Team GO Rocket lineups and catchable Pokemon",
+    options: [
+      {
+        name: "leader",
+        description: "Specific leader or grunt to look up",
+        type: 3, // STRING
+        required: false,
+        autocomplete: true
+      }
+    ]
+  },
+  {
+    name: "promocodes",
+    description: "View active Pokemon GO promo codes"
+  },
+  {
     name: "raidschannel",
     description: "Get or set the channel for weekly raids summary",
     options: [

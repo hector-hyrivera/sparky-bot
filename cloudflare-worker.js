@@ -16,10 +16,12 @@ const CONFIG = {
   },
   URLS: {
     POKEDEX: "https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json",
-    RAID_BOSSES: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/refs/heads/data/raids.json",
-    RESEARCH: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/research.json",
-    EGGS: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/eggs.json",
-    EVENTS: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json",
+    RAID_BOSSES: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/raids.json",
+    RESEARCH: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/research.json",
+    EGGS: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/eggs.json",
+    EVENTS: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/events.json",
+    ROCKET_LINEUPS: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/rocketLineups.json",
+    PROMO_CODES: "https://raw.githubusercontent.com/hector-hyrivera/ScrapedDuck/data/promoCodes.json",
     DEFAULT_IMAGE: "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/Pokemon/Addressable%20Assets/pm000.icon.png"
   },
   FOOTERS: {
@@ -98,22 +100,22 @@ async function getPokedex() {
   return null;
 }
 
-// Fetch research data
+// Fetch research data (new schema: { breakthrough, tasks })
 async function getResearchData() {
   const cached = cache.get('research');
   if (cached) return cached;
 
   const result = await fetchWithValidation(
     CONFIG.URLS.RESEARCH,
-    data => Array.isArray(data)
+    data => data && Array.isArray(data.tasks)
   );
-  
+
   if (result.success) {
     cache.set('research', result.data);
     return result.data;
   }
-  
-  return [];
+
+  return { breakthrough: null, tasks: [] };
 }
 
 // Fetch egg data
@@ -153,6 +155,42 @@ async function getRaidBosses() {
     return result.data;
   }
   
+  return [];
+}
+
+// Fetch rocket lineup data
+async function getRocketLineups() {
+  const cached = cache.get('rocketLineups');
+  if (cached) return cached;
+
+  const result = await fetchWithValidation(
+    CONFIG.URLS.ROCKET_LINEUPS,
+    data => Array.isArray(data)
+  );
+
+  if (result.success) {
+    cache.set('rocketLineups', result.data);
+    return result.data;
+  }
+
+  return [];
+}
+
+// Fetch promo codes data
+async function getPromoCodes() {
+  const cached = cache.get('promoCodes');
+  if (cached) return cached;
+
+  const result = await fetchWithValidation(
+    CONFIG.URLS.PROMO_CODES,
+    data => Array.isArray(data)
+  );
+
+  if (result.success) {
+    cache.set('promoCodes', result.data);
+    return result.data;
+  }
+
   return [];
 }
 
@@ -405,9 +443,10 @@ async function handleCurrentRaidsCommand() {
     groups.get(tier).push(r);
   }
 
-  // Order tiers: Mega, Tier 5, Tier 4, Tier 3, Tier 2, Tier 1, Other
+  // Order tiers: support both old (Mega, Tier 5) and new (Mega Raids, 5-Star Raids) formats
   const order = [
-    'Mega', 'Tier 5', 'Tier 4', 'Tier 3', 'Tier 2', 'Tier 1', 'Other'
+    'Mega', 'Mega Raids', 'Tier 5', '5-Star Raids', 'Tier 4', '4-Star Raids',
+    'Tier 3', '3-Star Raids', 'Tier 2', '2-Star Raids', 'Tier 1', '1-Star Raids', 'Other'
   ];
   const colorForTier = (tier) => {
     if (/mega/i.test(tier)) return CONFIG.COLORS.RED;
@@ -527,11 +566,12 @@ async function handleResearchCommand(options) {
   }
 
   const researchData = await getResearchData();
-  if (!researchData || researchData.length === 0) {
+  const tasks = researchData?.tasks || [];
+  if (tasks.length === 0) {
     return { content: "Sorry, I couldn't fetch the research data at the moment." };
   }
 
-  const task = researchData.find(t => t.text === researchTask);
+  const task = tasks.find(t => t.text === researchTask);
   if (!task) {
     return { content: `Couldn't find research task: "${researchTask}"` };
   }
@@ -542,7 +582,8 @@ async function handleResearchCommand(options) {
   // Handle rewards
   if (task.rewards?.length > 0) {
     const rewardsText = task.rewards.map(reward => {
-      let text = `**${reward.name}**`;
+      const typeIndicator = reward.type === 'encounter' ? '\u{1F4E6}' : '\u{1F392}';
+      let text = `${typeIndicator} **${reward.name}**`;
       if (reward.combatPower) {
         text += ` (CP: ${reward.combatPower.min}-${reward.combatPower.max})`;
       }
@@ -551,9 +592,9 @@ async function handleResearchCommand(options) {
       }
       return text;
     }).join('\n');
-    
+
     EmbedUtils.addField(embed, "Possible Rewards", rewardsText || "Unknown rewards");
-    
+
     if (task.rewards[0]?.image) {
       EmbedUtils.setThumbnail(embed, task.rewards[0].image);
     }
@@ -572,6 +613,24 @@ async function handleResearchCommand(options) {
   return { embeds: [embed] };
 }
 
+// Rarity label helper for egg Pokemon (0-5 scale)
+function eggRarityLabel(rarity) {
+  const labels = { 1: '\u{1F7E2}', 2: '\u{1F7E1}', 3: '\u{1F7E0}', 4: '\u{1F534}', 5: '\u{1F7E3}' };
+  return labels[rarity] || '';
+}
+
+// Format a single egg Pokemon entry with CP and rarity
+function formatEggPokemon(p) {
+  let text = p.name;
+  const rarityIcon = eggRarityLabel(p.rarity);
+  if (rarityIcon) text = `${rarityIcon} ${text}`;
+  if (p.combatPower?.min != null && p.combatPower?.max != null) {
+    text += ` (CP ${p.combatPower.min}-${p.combatPower.max})`;
+  }
+  if (p.canBeShiny) text += ' \u2728';
+  return text;
+}
+
 // Handle egg command
 async function handleEggCommand(options) {
   const eggType = options.find(opt => opt.name === "type")?.value;
@@ -584,53 +643,160 @@ async function handleEggCommand(options) {
     if (!data?.length) {
       return { content: "Sorry, I couldn't fetch egg data at this time." };
     }
-    
+
     const pokemonInEgg = data.filter(p => p.eggType.toLowerCase() === eggType.toLowerCase());
     if (pokemonInEgg.length === 0) {
       return { content: `Sorry, I couldn't find information for "${eggType}" eggs.` };
     }
-    
+
     const embed = EmbedUtils.createBaseEmbed(
       `${eggType} Eggs`,
       CONFIG.COLORS.DEEP_SKY_BLUE,
-      `Here are Pokémon that can hatch from ${eggType} eggs:`
+      `Here are Pok\u00e9mon that can hatch from ${eggType} eggs:`
     );
     EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
-    
-    // Group Pokemon efficiently
+
+    // Separate Route Gift Pokemon from regular egg Pokemon
+    const giftPokemon = pokemonInEgg.filter(p => p.isGiftExchange);
+    const regularPokemon = pokemonInEgg.filter(p => !p.isGiftExchange);
+
+    // Group regular Pokemon
     const groups = {
-      shiny: pokemonInEgg.filter(p => p.canBeShiny),
-      nonShiny: pokemonInEgg.filter(p => !p.canBeShiny),
-      adventureSync: pokemonInEgg.filter(p => p.isAdventureSync),
-      regional: pokemonInEgg.filter(p => p.isRegional)
+      shiny: regularPokemon.filter(p => p.canBeShiny),
+      nonShiny: regularPokemon.filter(p => !p.canBeShiny),
+      adventureSync: regularPokemon.filter(p => p.isAdventureSync),
+      regional: regularPokemon.filter(p => p.isRegional)
     };
-    
-    // Add fields for each group
+
     if (groups.shiny.length > 0) {
-      EmbedUtils.addField(embed, "Can be Shiny", groups.shiny.map(p => `${p.name} ✨`).join(", "));
+      EmbedUtils.addField(embed, "Can be Shiny", groups.shiny.map(formatEggPokemon).join("\n"));
     }
-    
+
     if (groups.nonShiny.length > 0) {
-      EmbedUtils.addField(embed, "Cannot be Shiny", groups.nonShiny.map(p => p.name).join(", "));
+      EmbedUtils.addField(embed, "Cannot be Shiny", groups.nonShiny.map(formatEggPokemon).join("\n"));
     }
-    
+
     if (groups.adventureSync.length > 0) {
-      EmbedUtils.addField(embed, "Adventure Sync Exclusive", groups.adventureSync.map(p => p.name).join(", "));
+      EmbedUtils.addField(embed, "Adventure Sync Exclusive", groups.adventureSync.map(formatEggPokemon).join("\n"));
     }
-    
+
     if (groups.regional.length > 0) {
-      EmbedUtils.addField(embed, "Regional Exclusive", groups.regional.map(p => p.name).join(", "));
+      EmbedUtils.addField(embed, "Regional Exclusive", groups.regional.map(formatEggPokemon).join("\n"));
     }
-    
+
+    if (giftPokemon.length > 0) {
+      EmbedUtils.addField(embed, "Route Gifts", giftPokemon.map(formatEggPokemon).join("\n"));
+    }
+
     if (pokemonInEgg[0]?.image) {
       EmbedUtils.setThumbnail(embed, pokemonInEgg[0].image);
     }
-    
+
     return { embeds: [embed] };
   } catch (error) {
     console.error("Error handling egg command:", error);
     return { content: "Sorry, an error occurred while processing your request." };
   }
+}
+
+// Handle Rocket command
+async function handleRocketCommand(options) {
+  const lineups = await getRocketLineups();
+  if (!lineups || lineups.length === 0) {
+    return { content: "Sorry, I couldn't fetch Team GO Rocket lineup data at the moment." };
+  }
+
+  const leaderName = options.find(opt => opt.name === "leader")?.value;
+
+  if (!leaderName) {
+    // Overview: list all leaders/grunts
+    const embed = EmbedUtils.createBaseEmbed(
+      "Team GO Rocket Lineups",
+      CONFIG.COLORS.RED,
+      "All current Team GO Rocket lineups:"
+    );
+    EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+
+    for (const lineup of lineups.slice(0, 25)) {
+      const encounters = [
+        ...lineup.firstPokemon,
+        ...lineup.secondPokemon,
+        ...lineup.thirdPokemon
+      ].filter(p => p.isEncounter).map(p => p.name);
+
+      let value = `**${lineup.title}**`;
+      if (lineup.type) value += `\nType: ${lineup.type}`;
+      if (encounters.length > 0) value += `\nCatchable: ${encounters.join(', ')}`;
+      EmbedUtils.addField(embed, lineup.name, value, true);
+    }
+
+    return { embeds: [embed] };
+  }
+
+  // Detailed view for a specific leader/grunt
+  const lineup = lineups.find(l => l.name.toLowerCase() === leaderName.toLowerCase());
+  if (!lineup) {
+    return { content: `Couldn't find a Team GO Rocket lineup for "${leaderName}".` };
+  }
+
+  const embed = EmbedUtils.createBaseEmbed(
+    `${lineup.name} - ${lineup.title}`,
+    CONFIG.COLORS.RED
+  );
+  EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+
+  const slotLabels = [
+    { key: 'firstPokemon', label: 'Slot 1' },
+    { key: 'secondPokemon', label: 'Slot 2' },
+    { key: 'thirdPokemon', label: 'Slot 3' }
+  ];
+
+  let thumbnailSet = false;
+  for (const { key, label } of slotLabels) {
+    const pokemon = lineup[key];
+    if (!pokemon || pokemon.length === 0) continue;
+
+    const slotText = pokemon.map(p => {
+      let text = `**${p.name}**`;
+      if (p.types?.length) text += ` (${p.types.join(', ')})`;
+      if (p.isEncounter) text += ' \u{1F4E6}';
+      if (p.canBeShiny) text += ' \u2728';
+      return text;
+    }).join('\n');
+
+    EmbedUtils.addField(embed, label, slotText);
+
+    if (!thumbnailSet && pokemon[0]?.image) {
+      EmbedUtils.setThumbnail(embed, pokemon[0].image);
+      thumbnailSet = true;
+    }
+  }
+
+  return { embeds: [embed] };
+}
+
+// Handle Promo Codes command
+async function handlePromoCodesCommand() {
+  const codes = await getPromoCodes();
+  if (!codes || codes.length === 0) {
+    return { content: "No active promo codes at the moment." };
+  }
+
+  const embed = EmbedUtils.createBaseEmbed(
+    "Active Promo Codes",
+    CONFIG.COLORS.GREEN,
+    "Here are the current active promo codes:"
+  );
+  EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
+
+  for (const promo of codes) {
+    let value = `\`${promo.code}\``;
+    if (promo.rewards) value += `\nRewards: ${promo.rewards}`;
+    if (promo.link) value += `\n[Redeem here](${promo.link})`;
+    EmbedUtils.addField(embed, promo.code, value);
+  }
+
+  return { embeds: [embed] };
 }
 
 // Optimized autocomplete handlers
@@ -718,13 +884,14 @@ const AutocompleteHandlers = {
 
   async research(focusedValue) {
     const researchData = await getResearchData();
-    if (!researchData?.length) return [];
-    
+    const tasks = researchData?.tasks || [];
+    if (!tasks.length) return [];
+
     const searchValue = focusedValue.toLowerCase();
-    const filtered = searchValue 
-      ? researchData.filter(task => task.text.toLowerCase().includes(searchValue))
-      : researchData;
-    
+    const filtered = searchValue
+      ? tasks.filter(task => task.text.toLowerCase().includes(searchValue))
+      : tasks;
+
     return filtered
       .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
       .map(task => ({
@@ -750,6 +917,32 @@ const AutocompleteHandlers = {
       console.error("Error in egg autocomplete:", error);
       return [];
     }
+  },
+
+  async rocket(focusedValue) {
+    const lineups = await getRocketLineups();
+    if (!lineups || lineups.length === 0) return [];
+
+    const searchValue = focusedValue.toLowerCase();
+    const toChoice = l => ({
+      name: `${l.name} (${l.title})`.slice(0, 100),
+      value: l.name
+    });
+
+    if (!searchValue) {
+      return lineups
+        .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+        .map(toChoice);
+    }
+
+    return lineups
+      .filter(l =>
+        l.name.toLowerCase().includes(searchValue) ||
+        (l.type || '').toLowerCase().includes(searchValue) ||
+        l.title.toLowerCase().includes(searchValue)
+      )
+      .slice(0, CONFIG.LIMITS.AUTOCOMPLETE_RESULTS)
+      .map(toChoice);
   }
 };
 
@@ -1001,6 +1194,8 @@ export default {
           raidboss: handleRaidBossCommand,
           research: handleResearchCommand,
           egg: handleEggCommand,
+          rocket: handleRocketCommand,
+          promocodes: handlePromoCodesCommand,
           raidschannel: handleRaidsChannelCommand
         };
         const handler = commandHandlers[name.toLowerCase()];
