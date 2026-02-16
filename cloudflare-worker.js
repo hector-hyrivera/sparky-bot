@@ -718,15 +718,19 @@ async function handleRocketCommand(options) {
     EmbedUtils.setFooter(embed, CONFIG.FOOTERS.LEEK_DUCK);
 
     for (const lineup of lineups.slice(0, 25)) {
-      const encounters = [
-        ...lineup.firstPokemon,
-        ...lineup.secondPokemon,
-        ...lineup.thirdPokemon
-      ].filter(p => p.isEncounter).map(p => p.name);
+      const formatSlot = (pokemon) => pokemon.map(p => {
+        let text = p.name;
+        if (p.isEncounter) text += ' \u{1F4E6}';
+        if (p.canBeShiny) text += ' \u2728';
+        return text;
+      }).join(' / ');
 
       let value = `**${lineup.title}**`;
       if (lineup.type) value += `\nType: ${lineup.type}`;
-      if (encounters.length > 0) value += `\nCatchable: ${encounters.join(', ')}`;
+      const slots = [lineup.firstPokemon, lineup.secondPokemon, lineup.thirdPokemon];
+      slots.forEach((slot, i) => {
+        if (slot?.length) value += `\nSlot ${i + 1}: ${formatSlot(slot)}`;
+      });
       EmbedUtils.addField(embed, lineup.name, value, true);
     }
 
